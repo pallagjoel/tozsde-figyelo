@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tőzsde Figyelő — Investment Intelligence Platform</title>
+  <meta name="description" content="Real-time stock tracking, technical analysis, portfolio optimization, and investment strategy signals powered by Yahoo Finance." />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="app-layout">
+
+  <!-- ══════════════ HEADER ══════════════ -->
+  <header class="header">
+    <a class="logo" href="#">
+      <div class="logo-icon">📈</div>
+      Tőzsde <span>Figyelő</span>
+    </a>
+    <div class="header-actions">
+      <span class="live-dot" title="Live Data Active"></span>
+      <span class="header-time" id="headerTime"></span>
+      <button class="btn btn-secondary btn-sm" id="refreshAllBtn" title="Refresh all prices">
+        <i class="fas fa-sync-alt"></i> Refresh
+      </button>
+      <a href="admin.html" class="btn btn-primary btn-sm" title="Admin Setup">
+        <i class="fas fa-cogs"></i> Setup
+      </a>
+    </div>
+  </header>
+
+  <!-- ══════════════ SIDEBAR ══════════════ -->
+  <nav class="sidebar">
+    <span class="nav-label">Navigation</span>
+    <a class="nav-item active" data-page="dashboard" id="nav-dashboard">
+      <i class="fas fa-chart-line"></i> Dashboard
+    </a>
+    <a class="nav-item" data-page="analysis" id="nav-analysis">
+      <i class="fas fa-microscope"></i> Analysis
+    </a>
+    <a class="nav-item" data-page="compare" id="nav-compare">
+      <i class="fas fa-exchange-alt"></i> Compare
+    </a>
+    <a class="nav-item" data-page="portfolio" id="nav-portfolio">
+      <i class="fas fa-briefcase"></i> Portfolio
+    </a>
+    <a class="nav-item" data-page="strategies" id="nav-strategies">
+      <i class="fas fa-brain"></i> Strategies
+    </a>
+    <a class="nav-item" data-page="valuations" id="nav-valuations">
+      <i class="fas fa-calculator"></i> Valuations
+    </a>
+    <a class="nav-item" data-page="screener" id="nav-screener">
+      <i class="fas fa-filter"></i> Screener
+    </a>
+    
+    <!-- Dynamic Custom Objects -->
+    <div id="dynamicNavSection"></div>
+    <a class="nav-item" data-page="records" id="nav-records" data-object-id="-1">
+      <i class="fas fa-database"></i> Stocks
+    </a>
+
+    <div style="margin-top:auto;">
+      <span class="nav-label">Settings</span>
+      <a class="nav-item" id="nav-account" style="cursor:pointer;">
+        <i class="fas fa-user-circle"></i> Account
+      </a>
+      <span class="nav-label" style="margin-top:15px;">API</span>
+      <a class="nav-item" href="http://localhost:8000/docs" target="_blank">
+        <i class="fas fa-code"></i> API Docs
+      </a>
+    </div>
+  </nav>
+
+  <!-- ══════════════ MAIN CONTENT ══════════════ -->
+  <main class="main-content">
+
+    <!-- ── Dashboard Page ── -->
+    <section class="page-section active" id="page-dashboard">
+
+      <div class="section-header">
+        <div>
+          <h1 class="section-title"><i class="fas fa-chart-line"></i> Watchlist</h1>
+          <p class="section-subtitle">Track real-time stock prices and performance</p>
+        </div>
+      </div>
+
+      <!-- Add Stock Form -->
+      <div class="glass-card">
+        <div class="add-stock-form">
+          <div class="input-wrapper">
+            <i class="fas fa-search"></i>
+            <input
+              type="text"
+              id="stockTickerInput"
+              class="stock-input"
+              placeholder="Enter ticker symbol (e.g. AAPL, MSFT, BTC-USD)"
+              autocomplete="off"
+              autocapitalize="characters"
+            />
+          </div>
+          <select id="historyPeriodSelect" class="stock-input" style="flex:0 0 120px; padding-left:12px;">
+            <option value="1mo">1 Month</option>
+            <option value="3mo">3 Months</option>
+            <option value="6mo">6 Months</option>
+            <option value="1yr" selected>1 Year</option>
+            <option value="2yr">2 Years</option>
+            <option value="5yr">5 Years</option>
+          </select>
+          <button class="btn btn-primary" id="addStockBtn">
+            <i class="fas fa-plus"></i> Add Stock
+          </button>
+        </div>
+      </div>
+
+      <!-- Summary Stats -->
+      <div class="stats-grid" id="summaryStats">
+        <div class="stat-card">
+          <div class="stat-label">Tracked Stocks</div>
+          <div class="stat-value" id="statCount">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Gainers Today</div>
+          <div class="stat-value text-success" id="statGainers">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Losers Today</div>
+          <div class="stat-value text-danger" id="statLosers">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Best Performer</div>
+          <div class="stat-value" id="statBest" style="font-size:1rem;">—</div>
+          <div class="stat-change" id="statBestChange"></div>
+        </div>
+      </div>
+
+      <!-- Stocks Grid -->
+      <div id="stocksContainer">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">📊</div>
+          <div class="empty-title">No stocks tracked yet</div>
+          <p class="empty-text">Add ticker symbols above to start monitoring stocks in real-time with Yahoo Finance data.</p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ── Analysis Page ── -->
+    <section class="page-section" id="page-analysis">
+
+      <div class="section-header">
+        <div>
+          <h2 class="section-title"><i class="fas fa-microscope"></i> Technical Analysis</h2>
+          <p class="section-subtitle">In-depth indicators and investment signals for tracked stocks</p>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="add-stock-form">
+          <div class="input-wrapper">
+            <i class="fas fa-search"></i>
+            <input type="text" id="analysisTickerInput" class="stock-input" placeholder="Enter ticker to analyze (must be tracked)" />
+          </div>
+          <select id="analysisPeriodSelect" class="stock-input" style="flex:0 0 120px; padding-left:12px;">
+            <option value="6mo">6 Months</option>
+            <option value="1yr" selected>1 Year</option>
+            <option value="2yr">2 Years</option>
+          </select>
+          <button class="btn btn-primary" id="analyzeBtn">
+            <i class="fas fa-chart-bar"></i> Analyze
+          </button>
+        </div>
+      </div>
+
+      <div id="analysisContent" style="display:none; flex-direction:column; gap:20px;">
+
+        <!-- Overall Signal -->
+        <div class="overall-signal glass-card">
+          <div>
+            <div class="overall-signal-label">COMPOSITE SIGNAL</div>
+            <div class="overall-signal-value" id="overallSignal">—</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="info-label">RSI (14)</div>
+            <div class="info-value" style="font-size:1.2rem;" id="rsiValue">—</div>
+          </div>
+        </div>
+
+        <!-- Strategy Signals -->
+        <div>
+          <h3 class="section-title" style="font-size:1rem; margin-bottom:12px;">
+            <i class="fas fa-signal"></i> Strategy Signals
+          </h3>
+          <div class="signal-grid" id="strategySignals"></div>
+        </div>
+
+        <!-- Price Chart with Indicators -->
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 class="section-title" style="font-size:1rem;">
+              <i class="fas fa-chart-area"></i> Price + Indicators
+            </h3>
+            <div class="timeframe-tabs" id="analysisTimeframeTabs">
+              <button class="timeframe-tab" data-period="1mo">1M</button>
+              <button class="timeframe-tab" data-period="3mo">3M</button>
+              <button class="timeframe-tab active" data-period="6mo">6M</button>
+              <button class="timeframe-tab" data-period="1yr">1Y</button>
+            </div>
+          </div>
+          <div class="chart-container tall"><canvas id="analysisChart"></canvas></div>
+        </div>
+
+        <!-- RSI Chart -->
+        <div>
+          <h3 class="section-title" style="font-size:1rem; margin-bottom:12px;">
+            <i class="fas fa-tachometer-alt"></i> RSI (14)
+          </h3>
+          <div class="chart-container"><canvas id="rsiChart"></canvas></div>
+        </div>
+
+        <!-- MACD Chart -->
+        <div>
+          <h3 class="section-title" style="font-size:1rem; margin-bottom:12px;">
+            <i class="fas fa-wave-square"></i> MACD (12, 26, 9)
+          </h3>
+          <div class="chart-container"><canvas id="macdChart"></canvas></div>
+        </div>
+
+        <!-- Fundamentals -->
+        <div>
+          <h3 class="section-title" style="font-size:1rem; margin-bottom:12px;">
+            <i class="fas fa-building"></i> Fundamentals
+          </h3>
+          <div class="info-grid" id="fundamentalsGrid"></div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ── Compare Page ── -->
+    <section class="page-section" id="page-compare">
+
+      <div class="section-header">
+        <div>
+          <h2 class="section-title"><i class="fas fa-code-compare"></i> Stock Comparison</h2>
+          <p class="section-subtitle">Compare normalized price performance of multiple stocks side-by-side</p>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="add-stock-form">
+          <div class="input-wrapper">
+            <i class="fas fa-plus-circle"></i>
+            <input type="text" id="compareTickerInput" class="stock-input" placeholder="Add ticker to compare (e.g. AAPL)" />
+          </div>
+          <button class="btn btn-secondary" id="addCompareTickerBtn">
+            <i class="fas fa-plus"></i> Add
+          </button>
+          <select id="comparePeriodSelect" class="stock-input" style="flex:0 0 120px; padding-left:12px;">
+            <option value="1mo">1 Month</option>
+            <option value="3mo">3 Months</option>
+            <option value="6mo" selected>6 Months</option>
+            <option value="1yr">1 Year</option>
+            <option value="2yr">2 Years</option>
+          </select>
+          <button class="btn btn-primary" id="runCompareBtn">
+            <i class="fas fa-play"></i> Compare
+          </button>
+        </div>
+        <div class="compare-tickers-display" id="compareTickersList" style="margin-top:12px;"></div>
+      </div>
+
+      <div id="compareChartArea" style="display:none;">
+        <div class="glass-card">
+          <div class="chart-container tall"><canvas id="compareChart"></canvas></div>
+        </div>
+        <div class="stats-grid" id="compareStats"></div>
+      </div>
+
+    </section>
+
+    <!-- ── Portfolio Page ── -->
+    <section class="page-section" id="page-portfolio">
+
+      <div class="section-header">
+        <div>
+          <h2 class="section-title"><i class="fas fa-briefcase"></i> Portfolio Optimizer</h2>
+          <p class="section-subtitle">Markowitz Mean-Variance Optimization via Monte Carlo simulation</p>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="add-stock-form">
+          <div class="input-wrapper">
+            <i class="fas fa-search"></i>
+            <input type="text" id="portfolioTickersInput" class="stock-input" placeholder="Tickers comma-separated (e.g. AAPL,MSFT,TSLA,NVDA)" />
+          </div>
+          <select id="portfolioPeriodSelect" class="stock-input" style="flex:0 0 120px; padding-left:12px;">
+            <option value="1yr">1 Year</option>
+            <option value="2yr" selected>2 Years</option>
+            <option value="5yr">5 Years</option>
+          </select>
+          <button class="btn btn-primary" id="optimizeBtn">
+            <i class="fas fa-calculator"></i> Optimize
+          </button>
+        </div>
+      </div>
+
+      <div id="portfolioResults" style="display:none; flex-direction:column; gap:20px;">
+        <div class="stats-grid" id="portfolioMetrics"></div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; flex-wrap:wrap;">
+          <!-- Optimal Sharpe Portfolio -->
+          <div class="glass-card">
+            <h3 class="section-title" style="font-size:1rem; margin-bottom:16px;">
+              <i class="fas fa-trophy"></i> Optimal (Max Sharpe)
+            </h3>
+            <div class="portfolio-weights" id="sharpeWeights"></div>
+          </div>
+          <!-- Min Volatility Portfolio -->
+          <div class="glass-card">
+            <h3 class="section-title" style="font-size:1rem; margin-bottom:16px;">
+              <i class="fas fa-shield-halved"></i> Min Volatility
+            </h3>
+            <div class="portfolio-weights" id="minvolWeights"></div>
+          </div>
+        </div>
+
+        <!-- Efficient Frontier Chart -->
+        <div class="glass-card">
+          <h3 class="section-title" style="font-size:1rem; margin-bottom:16px;">
+            <i class="fas fa-chart-scatter"></i> Efficient Frontier
+          </h3>
+          <div class="chart-container tall"><canvas id="frontierChart"></canvas></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ── Strategies Page ── -->
+    <section class="page-section" id="page-strategies">
+
+      <div class="section-header">
+        <div>
+          <h2 class="section-title"><i class="fas fa-brain"></i> Investment Strategies</h2>
+          <p class="section-subtitle">Signal overview for all tracked stocks across multiple strategy models</p>
+        </div>
+        <button class="btn btn-primary" id="loadAllSignalsBtn">
+          <i class="fas fa-bolt"></i> Load All Signals
+        </button>
+      </div>
+
+      <div id="strategiesContent">
+        <div class="empty-state">
+          <div class="empty-icon">🧠</div>
+          <div class="empty-title">No signals loaded yet</div>
+          <p class="empty-text">Click "Load All Signals" to generate buy/sell/hold signals for all tracked stocks using 4 different strategy models.</p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ── Valuations Page ── -->
+    <section class="page-section" id="page-valuations">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title"><i class="fas fa-calculator"></i> Value Scanner</h2>
+          <p class="section-subtitle">DCF Intrinsic Value, Altman Z-Score & CAPM — powered by FRED + FMP + yfinance</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-secondary" id="runEtlBtn"><i class="fas fa-download"></i> Run ETL</button>
+          <button class="btn btn-primary" id="runValuationsBtn"><i class="fas fa-calculator"></i> Run Valuations</button>
+        </div>
+      </div>
+
+      <!-- Macro Rates Card -->
+      <div class="stats-grid" id="macroRatesGrid">
+        <div class="stat-card">
+          <div class="stat-label">Risk-Free Rate (10Y)</div>
+          <div class="stat-value" id="macroRf">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Market Return</div>
+          <div class="stat-value" id="macroRm">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Inflation (CPI)</div>
+          <div class="stat-value" id="macroInflation">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Equity Risk Premium</div>
+          <div class="stat-value" id="macroErp">—</div>
+        </div>
+      </div>
+
+      <!-- ETL/Valuation Status -->
+      <div class="glass-card" id="etlStatusCard" style="display:none;">
+        <div class="etl-status">
+          <i class="fas fa-spinner fa-spin" style="color:var(--accent-primary);"></i>
+          <span id="etlStatusText">Running ETL pipeline...</span>
+        </div>
+      </div>
+
+      <!-- Valuations Table -->
+      <div class="glass-card">
+        <div style="overflow-x:auto;">
+          <table class="valuation-table" id="valuationTable">
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Name</th>
+                <th>Sector</th>
+                <th>Market Price</th>
+                <th>Intrinsic Value</th>
+                <th>Margin of Safety</th>
+                <th>Z-Score</th>
+                <th>WACC</th>
+                <th>Signal</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="valuationTableBody">
+              <tr><td colspan="10" style="text-align:center; padding:40px; color:var(--text-muted);">No valuations computed. Run ETL then Valuations to populate.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Screener Page ── -->
+    <section class="page-section" id="page-screener">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title"><i class="fas fa-filter"></i> Quantitative Screener</h2>
+          <p class="section-subtitle">Dynamic multi-parameter segmentation across all tracked equities</p>
+        </div>
+        <button class="btn btn-primary" id="runScreenerBtn"><i class="fas fa-search"></i> Run Screen</button>
+      </div>
+
+      <!-- Filter Builder -->
+      <div class="glass-card">
+        <h3 class="section-title" style="font-size:1rem; margin-bottom:16px;"><i class="fas fa-sliders-h"></i> Filter Criteria</h3>
+        <div class="screener-filters" id="screenerFilters">
+          <div class="filter-row">
+            <label class="filter-label">Sector</label>
+            <select class="stock-input filter-input" id="filterSector">
+              <option value="">All Sectors</option>
+              <option value="Technology">Technology</option>
+              <option value="Healthcare">Healthcare</option>
+              <option value="Financial Services">Financial Services</option>
+              <option value="Consumer Cyclical">Consumer Cyclical</option>
+              <option value="Communication Services">Communication Services</option>
+              <option value="Industrials">Industrials</option>
+              <option value="Consumer Defensive">Consumer Defensive</option>
+              <option value="Energy">Energy</option>
+              <option value="Utilities">Utilities</option>
+              <option value="Real Estate">Real Estate</option>
+              <option value="Basic Materials">Basic Materials</option>
+            </select>
+          </div>
+          <div class="filter-row">
+            <label class="filter-label">Signal</label>
+            <select class="stock-input filter-input" id="filterSignal">
+              <option value="">All Signals</option>
+              <option value="STRONG_BUY">Strong Buy</option>
+              <option value="BUY">Buy</option>
+              <option value="HOLD">Hold</option>
+              <option value="VALUE_TRAP">Value Trap</option>
+              <option value="OVERVALUED">Overvalued</option>
+            </select>
+          </div>
+          <div class="filter-row">
+            <label class="filter-label">Z-Score Zone</label>
+            <select class="stock-input filter-input" id="filterZZone">
+              <option value="">All Zones</option>
+              <option value="SAFE">Safe (>2.99)</option>
+              <option value="GREY">Grey (1.81-2.99)</option>
+              <option value="DISTRESS">Distress (<1.81)</option>
+            </select>
+          </div>
+          <div class="filter-row">
+            <label class="filter-label">Min Margin of Safety (%)</label>
+            <input type="number" class="stock-input filter-input" id="filterMinMos" placeholder="e.g. 20" />
+          </div>
+          <div class="filter-row">
+            <label class="filter-label">Min Z-Score</label>
+            <input type="number" step="0.1" class="stock-input filter-input" id="filterMinZ" placeholder="e.g. 1.81" />
+          </div>
+          <div class="filter-row">
+            <label class="filter-label">Max WACC (%)</label>
+            <input type="number" step="0.1" class="stock-input filter-input" id="filterMaxWacc" placeholder="e.g. 15" />
+          </div>
+          <div class="filter-row">
+            <label class="filter-label">Sort By</label>
+            <select class="stock-input filter-input" id="filterSortBy">
+              <option value="margin_of_safety_pct">Margin of Safety</option>
+              <option value="altman_z_score">Z-Score</option>
+              <option value="intrinsic_value_dcf">Intrinsic Value</option>
+              <option value="wacc">WACC</option>
+            </select>
+          </div>
+          <div class="filter-row">
+            <label class="filter-label">Limit</label>
+            <input type="number" class="stock-input filter-input" id="filterLimit" value="50" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Screener Results -->
+      <div class="glass-card" id="screenerResultsCard" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 class="section-title" style="font-size:1rem;"><i class="fas fa-table"></i> Results <span id="screenerCount" style="color:var(--text-muted); font-weight:400;"></span></h3>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="valuation-table" id="screenerTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Ticker</th>
+                <th>Name</th>
+                <th>Sector</th>
+                <th>Market Price</th>
+                <th>Intrinsic Value</th>
+                <th>MoS %</th>
+                <th>Z-Score</th>
+                <th>Zone</th>
+                <th>WACC</th>
+                <th>Signal</th>
+              </tr>
+            </thead>
+            <tbody id="screenerTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+<!-- ── Records Page (Stocks by default, or reused for dynamic objects) ── -->
+<section class="page-section" id="page-records">
+  <div class="section-header">
+    <div>
+      <h2 class="section-title" id="recordsPageTitle"><i class="fas fa-database"></i> Data Records</h2>
+      <p class="section-subtitle" id="recordsPageSubtitle">Full database view of all tracked equities and computed metrics</p>
+    </div>
+    <div class="search-box" style="display:flex; gap:10px;">
+      <input type="text" class="stock-input" id="recordSearch" placeholder="Search..." style="min-width:300px;">
+      <button class="btn btn-secondary" id="manageColumnsBtn" title="Manage Columns">
+        <i class="fas fa-cog"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="glass-card" style="padding:0; overflow:hidden;">
+    <div style="overflow-x:auto;">
+      <table class="valuation-table records-table" id="recordsTable">
+        <thead id="recordsTableHeader">
+          <!-- Dynamically populated headers -->
+        </thead>
+        <tbody id="recordsTableBody">
+          <!-- Dynamically populated rows -->
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:16px; border-top:1px solid var(--glass-border); display:flex; justify-content:space-between; align-items:center;">
+      <div id="recordsPaginationInfo" style="font-size:0.85rem; color:var(--text-muted);">Showing 0 of 0</div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-secondary btn-sm" id="recordsPrevBtn" disabled>Previous</button>
+        <button class="btn btn-secondary btn-sm" id="recordsNextBtn" disabled>Next</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ══════════════ STOCK DETAIL MODAL ══════════════ -->
+<div class="modal-overlay" id="stockModal" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modalTitle">Stock Detail</div>
+        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;" id="modalSubtitle"></div>
+      </div>
+      <button class="modal-close" id="closeModalBtn"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <!-- Price row -->
+      <div style="display:flex; gap:20px; align-items:center; flex-wrap:wrap;">
+        <div>
+          <div class="stat-label">Current Price</div>
+          <div style="font-size:2rem; font-weight:800;" id="modalPrice">—</div>
+        </div>
+        <div id="modalChange" style="font-size:1.1rem; font-weight:600;"></div>
+      </div>
+
+      <!-- Key metrics -->
+      <div class="info-grid" id="modalMetrics"></div>
+
+      <!-- Chart with timeframes -->
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <div style="font-weight:600; font-size:0.9rem; color:var(--text-secondary);">Price History</div>
+          <div class="timeframe-tabs" id="modalTimeframeTabs">
+            <button class="timeframe-tab" data-period="1mo">1M</button>
+            <button class="timeframe-tab active" data-period="3mo">3M</button>
+            <button class="timeframe-tab" data-period="6mo">6M</button>
+            <button class="timeframe-tab" data-period="1yr">1Y</button>
+            <button class="timeframe-tab" data-period="2yr">2Y</button>
+          </div>
+        </div>
+        <div class="chart-container"><canvas id="modalPriceChart"></canvas></div>
+      </div>
+
+      <!-- Company Description -->
+      <div id="modalDescription" style="display:none;">
+        <div class="info-label" style="margin-bottom:6px;">About</div>
+        <div id="modalDescriptionText" style="font-size:0.85rem; color:var(--text-secondary); line-height:1.7; max-height:120px; overflow:hidden; position:relative;">
+        </div>
+        <button id="readMoreBtn" class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="document.getElementById('modalDescriptionText').style.maxHeight='none'; this.style.display='none';">
+          Read more
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ DCF DETAIL MODAL ══════════════ -->
+<div class="modal-overlay" id="dcfModal" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="dcfModalTitle">DCF Breakdown</div>
+        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;" id="dcfModalSubtitle"></div>
+      </div>
+      <button class="modal-close" id="closeDcfModalBtn"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <!-- Signal Banner -->
+      <div class="dcf-signal-banner" id="dcfSignalBanner"></div>
+
+      <!-- Key Metrics -->
+      <div class="stats-grid" style="margin-bottom:20px;" id="dcfKeyMetrics"></div>
+
+      <!-- DCF Steps -->
+      <h3 class="section-title" style="font-size:1rem; margin-bottom:12px;"><i class="fas fa-calculator"></i> DCF Components</h3>
+      <div class="info-grid" id="dcfComponents"></div>
+
+      <!-- CAPM -->
+      <h3 class="section-title" style="font-size:1rem; margin:20px 0 12px;"><i class="fas fa-chart-line"></i> CAPM & WACC</h3>
+      <div class="info-grid" id="dcfCapm"></div>
+
+      <!-- Altman Z -->
+      <h3 class="section-title" style="font-size:1rem; margin:20px 0 12px;"><i class="fas fa-shield-halved"></i> Altman Z-Score</h3>
+      <div class="info-grid" id="dcfZScore"></div>
+
+      <!-- Signal Reason -->
+      <div class="glass-card" style="margin-top:20px; padding:16px;">
+        <div class="info-label">Signal Reasoning</div>
+        <div id="dcfSignalReason" style="font-size:0.9rem; line-height:1.6; margin-top:8px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ TOAST CONTAINER ══════════════ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ══════════════ COLUMNS MODAL ══════════════ -->
+<div class="modal-overlay" id="columnsModal" style="display:none;">
+  <div class="modal">
+    <h2 style="font-size:1.5rem; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:10px;">List View Columns</h2>
+    <div id="columnsCheckboxList" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; max-height:400px; overflow-y:auto; margin-bottom:20px; font-size:0.9rem;">
+      <!-- Populated dynamically -->
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button class="btn btn-secondary" id="closeColumnsModalBtn">Cancel</button>
+      <button class="btn btn-primary" id="saveColumnsBtn">Save View</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Generic Record Detail Modal ── -->
+<div class="modal-overlay" id="recordDetailModal" style="display:none;">
+  <div class="modal" style="max-width:800px; width:90%;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="rdTitle">Record Details</div>
+        <div style="font-size:0.9rem; color:var(--text-muted); margin-top:4px;" id="rdSubtitle"></div>
+      </div>
+      <button class="modal-close" id="closeRecordDetailModalBtn"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" style="max-height:600px; overflow-y:auto;">
+      <div id="rdFieldsGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:16px;">
+        <!-- Dynamically populated -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ AUTH OVERLAY ══════════════ -->
+<div class="modal-overlay" id="authOverlay" style="display:none; z-index:9999; background:rgba(10,12,18,0.95); backdrop-filter:blur(10px);">
+  <div class="modal" style="max-width:400px; width:90%; padding:30px;">
+    <div style="text-align:center; margin-bottom:24px;">
+      <i class="fas fa-chart-pie" style="font-size:3rem; color:var(--primary); margin-bottom:10px;"></i>
+      <h2 style="font-size:1.6rem; margin-bottom:5px;">Welcome Back</h2>
+      <p style="color:var(--text-muted); font-size:0.9rem;">Sign in to access your dashboard</p>
+    </div>
+    
+    <div id="loginFormContainer">
+      <div style="margin-bottom:15px;">
+        <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Email</label>
+        <input type="email" id="authEmail" class="form-control" placeholder="you@example.com" style="width:100%; box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Password</label>
+        <input type="password" id="authPassword" class="form-control" placeholder="••••••••" style="width:100%; box-sizing:border-box;">
+      </div>
+      <button class="btn btn-primary" id="loginBtn" style="width:100%; padding:12px; margin-bottom:10px;">Sign In</button>
+      <button class="btn btn-secondary" id="registerBtn" style="width:100%; padding:12px;">Create Account</button>
+    </div>
+
+    <div id="mfaFormContainer" style="display:none;">
+      <div style="margin-bottom:20px; text-align:center;">
+        <label style="display:block; font-size:0.9rem; color:var(--text-muted); margin-bottom:10px;">Enter 6-digit Authenticator Code</label>
+        <input type="text" id="authMfaCode" class="form-control" placeholder="000000" style="width:100%; box-sizing:border-box; text-align:center; font-size:1.2rem; letter-spacing:4px;" maxlength="6">
+      </div>
+      <button class="btn btn-primary" id="verifyMfaBtn" style="width:100%; padding:12px;">Verify Code</button>
+      <button class="btn btn-secondary" id="cancelMfaBtn" style="width:100%; padding:12px; margin-top:10px; background:transparent;">Cancel</button>
+    </div>
+    
+    <div id="mfaSetupContainer" style="display:none; text-align:center;">
+      <h3 style="font-size:1.1rem; margin-bottom:10px;">Scan to Setup MFA</h3>
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">Open Google Authenticator and scan this code:</p>
+      <div id="mfaQrCode" style="background:#fff; padding:10px; border-radius:8px; display:inline-block; margin-bottom:15px; width:200px; height:200px;"></div>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">Or enter code manually:<br><strong id="mfaSecretText" style="color:#fff; letter-spacing:2px; user-select:all;"></strong></p>
+      <button class="btn btn-primary" id="mfaSetupDoneBtn" style="width:100%; padding:12px;">I've Scanned It</button>
+    </div>
+    
+    <div id="authErrorMsg" style="color:var(--danger); font-size:0.85rem; text-align:center; margin-top:15px; height:20px;"></div>
+  </div>
+</div>
+
+<!-- ══════════════ ACCOUNT MODAL ══════════════ -->
+<div class="modal-overlay" id="accountModal" style="display:none; z-index:9000;">
+  <div class="modal" style="max-width:400px; width:90%; padding:30px;">
+    <div class="modal-header" style="margin-bottom:20px; border-bottom:none;">
+      <h2 style="font-size:1.5rem; margin:0;"><i class="fas fa-user-circle"></i> Account Settings</h2>
+      <button class="modal-close" id="closeAccountModalBtn"><i class="fas fa-times"></i></button>
+    </div>
+    
+    <div style="background:var(--bg-secondary); padding:20px; border-radius:10px; margin-bottom:20px;">
+      <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Email Address</div>
+      <div id="accountEmailDisplay" style="font-size:1.1rem; font-weight:600; word-break:break-all;">Loading...</div>
+      
+      <div style="margin-top:15px; font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Security</div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <i id="mfaStatusIcon" class="fas fa-shield-alt" style="color:var(--text-muted);"></i>
+        <span id="mfaStatusText" style="font-weight:500;">MFA Status Unknown</span>
+      </div>
+    </div>
+    
+    <button class="btn" id="logoutBtn" style="width:100%; padding:12px; background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid rgba(239,68,68,0.3);">
+      <i class="fas fa-sign-out-alt"></i> Log Out
+    </button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

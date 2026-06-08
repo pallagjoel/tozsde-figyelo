@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Setup — Tőzsde Figyelő</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body>
+
+<div class="app-layout">
+
+  <!-- ══════════════ HEADER ══════════════ -->
+  <header class="header">
+    <a class="logo" href="index.html">
+      <div class="logo-icon">📈</div>
+      Tőzsde <span>Figyelő</span>
+    </a>
+    <div class="header-actions">
+      <a href="index.html" class="btn btn-secondary btn-sm" title="Back to App">
+        <i class="fas fa-arrow-left"></i> Exit Setup
+      </a>
+    </div>
+  </header>
+
+  <!-- ══════════════ SIDEBAR ══════════════ -->
+  <nav class="sidebar">
+    <span class="nav-label">Setup Menu</span>
+    <a class="nav-item active" data-page="objects" id="nav-objects">
+      <i class="fas fa-cubes"></i> Object Manager
+    </a>
+    <a class="nav-item" data-page="bulkimport" id="nav-bulkimport">
+      <i class="fas fa-file-import"></i> Data Import Wizard
+    </a>
+  </nav>
+
+  <!-- ══════════════ MAIN CONTENT ══════════════ -->
+  <main class="main-content">
+
+    <!-- ── Object Manager Page ── -->
+    <section class="page-section active" id="page-objects">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title"><i class="fas fa-cubes"></i> Object Manager</h1>
+          <p class="section-subtitle">Manage dynamic objects and custom fields like Salesforce</p>
+        </div>
+        <button class="btn btn-primary" id="openNewObjectBtn"><i class="fas fa-plus"></i> New Object</button>
+      </div>
+
+      <div class="admin-grid" style="display:grid; grid-template-columns: 250px 1fr; gap:24px; align-items: start;">
+        
+        <!-- Objects List (Left) -->
+        <div class="glass-card" style="padding:0; overflow:hidden;">
+          <div style="padding:16px; border-bottom:1px solid var(--glass-border); font-weight:600;">Custom Objects</div>
+          <div id="objectsList" style="max-height:600px; overflow-y:auto;">
+            <!-- Rendered by JS -->
+            <div class="admin-object-item active" data-id="-1">Stocks (Standard)</div>
+          </div>
+        </div>
+
+        <!-- Object Detail (Right) -->
+        <div class="glass-card" id="objectDetailPanel">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 class="section-title" style="font-size:1.1rem;"><span id="detailObjectIcon"><i class="fas fa-database"></i></span> <span id="detailObjectName">Stocks</span></h3>
+            <button class="btn btn-secondary btn-sm" id="openNewFieldBtn"><i class="fas fa-plus"></i> New Field</button>
+          </div>
+          
+          <table class="valuation-table" style="width:100%;">
+            <thead>
+              <tr>
+                <th>API Name</th>
+                <th>Label</th>
+                <th>Type</th>
+                <th>Formula/Lookup</th>
+                <th>Status</th>
+                <th style="text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="customFieldsTableBody">
+              <tr><td colspan="6" style="text-align:center; padding:20px;">Select an object to load fields...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Bulk Import Page ── -->
+    <section class="page-section" id="page-bulkimport">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title"><i class="fas fa-file-import"></i> Bulk Import Wizard</h2>
+          <p class="section-subtitle">Import up to 2000 stocks simultaneously</p>
+        </div>
+      </div>
+
+      <div class="bulk-import-wizard" style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
+        <!-- Manual List -->
+        <div class="glass-card">
+          <h3 class="section-title" style="font-size:1.1rem; margin-bottom:12px;"><i class="fas fa-list-ol"></i> Import from List</h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">Paste comma, space, or newline separated tickers.</p>
+          <textarea class="stock-input" id="bulkTickersInput" rows="10" placeholder="AAPL, MSFT, GOOGL..." style="resize:vertical; width:100%; margin-bottom:16px;"></textarea>
+          <button class="btn btn-primary" id="startBulkImportBtn" style="width:100%; justify-content:center;">
+            <i class="fas fa-play"></i> Start Import
+          </button>
+        </div>
+
+        <!-- Index Import -->
+        <div class="glass-card">
+          <h3 class="section-title" style="font-size:1.1rem; margin-bottom:12px;"><i class="fas fa-globe"></i> Import from Index</h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">Automatically fetch all constituents of major market indices.</p>
+          
+          <div class="info-grid" style="grid-template-columns: 1fr; gap:12px;">
+            <div class="stat-card" style="flex-direction:row; justify-content:space-between; align-items:center; padding:16px;">
+              <div>
+                <div style="font-weight:600; color:var(--text-primary);">S&P 500</div>
+                <div style="font-size:0.8rem; color:var(--text-muted);">~500 largest US companies</div>
+              </div>
+              <button class="btn btn-secondary btn-sm index-import-btn" data-index="sp500">Import All</button>
+            </div>
+            <div class="stat-card" style="flex-direction:row; justify-content:space-between; align-items:center; padding:16px;">
+              <div>
+                <div style="font-weight:600; color:var(--text-primary);">NASDAQ 100</div>
+                <div style="font-size:0.8rem; color:var(--text-muted);">Top non-financials</div>
+              </div>
+              <button class="btn btn-secondary btn-sm index-import-btn" data-index="nasdaq100">Import All</button>
+            </div>
+            <div class="stat-card" style="flex-direction:row; justify-content:space-between; align-items:center; padding:16px;">
+              <div>
+                <div style="font-weight:600; color:var(--text-primary);">Dow Jones 30</div>
+                <div style="font-size:0.8rem; color:var(--text-muted);">30 blue-chip companies</div>
+              </div>
+              <button class="btn btn-secondary btn-sm index-import-btn" data-index="dow30">Import All</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Import Progress -->
+      <div class="glass-card" id="importProgressCard" style="display:none; margin-top:24px;">
+        <h3 class="section-title" style="font-size:1rem; margin-bottom:16px;"><i class="fas fa-spinner fa-spin"></i> Import Progress</h3>
+        
+        <div class="progress-bar" style="height:12px; background:rgba(255,255,255,0.05); border-radius:10px; overflow:hidden; margin-bottom:12px;">
+          <div class="progress-fill" id="importProgressFill" style="height:100%; width:0%; background:var(--accent-primary); transition:width 0.3s ease;"></div>
+        </div>
+        
+        <div style="display:flex; justify-content:space-between; font-size:0.85rem; color:var(--text-muted);">
+          <span id="importStatusText">Initializing...</span>
+          <span><span id="importImportedCount" style="color:var(--accent-secondary); font-weight:600;">0</span> imported, <span id="importSkippedCount">0</span> skipped, <span id="importErrorCount" style="color:var(--accent-danger);">0</span> errors / <span id="importTotalCount">0</span> total</span>
+        </div>
+
+        <!-- Live Error Log -->
+        <div id="importErrorLogContainer" style="display:none; margin-top:20px;">
+          <div style="font-size:0.8rem; font-weight:600; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase;">Error Log</div>
+          <div id="importErrorLog" style="background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); border-radius:8px; padding:12px; font-family:monospace; font-size:0.8rem; color:var(--accent-danger); max-height:150px; overflow-y:auto; line-height:1.5;">
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+<!-- ══════════════ NEW OBJECT MODAL ══════════════ -->
+<div class="modal-overlay" id="objectModal" style="display:none;">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <div class="modal-title">Create Custom Object</div>
+      <button class="modal-close" id="closeObjectModalBtn"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="input-wrapper" style="margin-bottom:16px;">
+        <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">Label</label>
+        <input type="text" class="stock-input" id="objectLabel" placeholder="e.g. Portfolio">
+      </div>
+      <div class="input-wrapper" style="margin-bottom:16px;">
+        <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">Plural Label</label>
+        <input type="text" class="stock-input" id="objectPluralLabel" placeholder="e.g. Portfolios">
+      </div>
+      <div class="input-wrapper" style="margin-bottom:16px;">
+        <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">API Name</label>
+        <input type="text" class="stock-input" id="objectName" placeholder="e.g. portfolio" style="font-family:monospace;">
+      </div>
+      <div class="input-wrapper" style="margin-bottom:24px;">
+        <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">Description</label>
+        <textarea class="stock-input" id="objectDesc" rows="3"></textarea>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:12px;">
+        <button class="btn btn-secondary" id="cancelObjectBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveObjectBtn"><i class="fas fa-save"></i> Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ FORMULA BUILDER MODAL ══════════════ -->
+<div class="modal-overlay" id="formulaModal" style="display:none;">
+  <div class="modal" style="max-width:900px;">
+    <div class="modal-header">
+      <div class="modal-title" id="formulaModalTitle">Create Custom Field</div>
+      <button class="modal-close" id="closeFormulaModalBtn"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" style="padding:0;">
+      <div class="admin-formula-builder" style="display:flex; height:500px; min-height:0;">
+        
+        <!-- Left: Field Properties -->
+        <div style="flex:0 0 300px; border-right:1px solid var(--border); padding:24px; display:flex; flex-direction:column; gap:16px; overflow-y:auto; min-height:0;">
+          <input type="hidden" id="formulaFieldId">
+          
+          <div class="input-wrapper">
+            <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">Field Label</label>
+            <input type="text" class="stock-input" id="formulaLabel" placeholder="e.g. Adjusted Margin">
+          </div>
+          
+          <div class="input-wrapper">
+            <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">API Name (Unique)</label>
+            <input type="text" class="stock-input" id="formulaName" placeholder="e.g. adj_margin" style="font-family:monospace; font-size:0.85rem;">
+          </div>
+          
+          <div class="input-wrapper">
+            <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">Field Type</label>
+            <select class="stock-input" id="formulaType">
+              <option value="text">Text</option>
+              <option value="number">Number</option>
+              <option value="percent">Percent</option>
+              <option value="currency">Currency</option>
+              <option value="formula">Formula (Stock only)</option>
+              <option value="lookup">Lookup Relationship</option>
+            </select>
+          </div>
+
+          <div class="input-wrapper" id="lookupObjectWrapper" style="display:none;">
+            <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">Related Object</label>
+            <select class="stock-input" id="lookupObjectSelect">
+              <option value="Stock">Stock</option>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          
+          <div class="input-wrapper">
+            <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">Description</label>
+            <textarea class="stock-input" id="formulaDesc" rows="3"></textarea>
+          </div>
+        </div>
+        
+        <!-- Right: Formula Editor -->
+        <div style="flex:1; display:flex; flex-direction:column; background:var(--bg-base); min-height:0;" id="formulaEditorPanel">
+          
+          <!-- Editor -->
+          <div style="flex:1; padding:24px; border-bottom:1px solid var(--border); display:flex; flex-direction:column;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+              <label style="font-size:0.8rem; font-weight:600; color:var(--text-muted); text-transform:uppercase;">Formula Expression</label>
+              <button class="btn btn-secondary btn-sm" id="testFormulaBtn"><i class="fas fa-play"></i> Test Syntax</button>
+            </div>
+            <textarea id="formulaEditor" style="flex:1; width:100%; background:var(--bg-elevated); border:1px solid var(--border); border-radius:8px; padding:16px; font-family:monospace; font-size:0.95rem; color:var(--text-primary); resize:none; outline:none;" placeholder="margin_of_safety_pct * altman_z_score"></textarea>
+            
+            <div id="formulaTestResult" style="margin-top:12px; padding:12px; border-radius:6px; display:none; font-family:monospace; font-size:0.85rem;"></div>
+          </div>
+          
+          <!-- Field Catalog -->
+          <div style="flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:16px; min-height:0;">
+            <div style="font-size:0.8rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:-4px;">Available Fields (Click to insert)</div>
+            
+            <div>
+              <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:8px;">Company & Market Data</div>
+              <div class="field-chip-container" id="catalogCompanyFields" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+            </div>
+            
+            <div>
+              <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:8px;">Valuation & Signals</div>
+              <div class="field-chip-container" id="catalogValuationFields" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+            </div>
+            
+            <div>
+              <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:8px;">Financial Statements</div>
+              <div class="field-chip-container" id="catalogFinancialsFields" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:1; display:none; flex-direction:column; background:var(--bg-base); padding:24px; align-items:center; justify-content:center; text-align:center; color:var(--text-muted);" id="nonFormulaPanel">
+          <i class="fas fa-info-circle" style="font-size:3rem; margin-bottom:16px; opacity:0.5;"></i>
+          <p>This is a standard field type.<br>No formula configuration required.</p>
+        </div>
+
+      </div>
+      
+      <!-- Footer actions -->
+      <div style="padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:12px; background:var(--bg-elevated);">
+        <button class="btn btn-secondary" id="cancelFormulaBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveFormulaBtn"><i class="fas fa-save"></i> Save Field</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════ TOAST CONTAINER ══════════════ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="admin.js"></script>
+</body>
+</html>

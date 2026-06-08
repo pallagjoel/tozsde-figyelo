@@ -1,0 +1,175 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# Tőzsde Figyelő — Quantitative Configuration
+# Every financial assumption is exposed. No black boxes.
+#
+# Usage in Python:
+#   from math_config import MathConfig
+#   cfg = MathConfig()                     # loads this file
+#   cfg.get_terminal_growth("Technology")  # → 0.04
+#   bear = cfg.scenario("bear")           # returns scenario overrides
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Global Defaults ───────────────────────────────────────────────────────────
+global:
+  risk_free_rate: 0.0425          # 10Y Treasury yield (overridden by FRED ETL)
+  market_return: 0.10             # Long-run S&P 500 annualized return
+  equity_risk_premium: 0.0575     # Rm - Rf
+  corporate_tax_rate: 0.21        # US federal corporate tax rate
+
+  # DCF Model
+  dcf_projection_years: 10
+  terminal_growth_rate: 0.025     # Default perpetual growth (GDP proxy)
+  max_fcf_growth_cap: 0.25        # Cap historical FCF growth at 25%
+  min_fcf_growth_floor: -0.10     # Floor for negative growth scenarios
+
+  # WACC Bounds
+  min_wacc: 0.06
+  max_wacc: 0.25
+
+  # Margin of Safety Thresholds
+  mos_strong_buy: 30.0            # % for STRONG_BUY signal
+  mos_buy: 20.0                   # % for BUY signal
+  mos_hold_floor: 0.0             # Below this → OVERVALUED
+
+  # Altman Z-Score
+  z_safe_threshold: 2.99
+  z_grey_threshold: 1.81
+
+
+# ── Altman Z-Score Coefficients ───────────────────────────────────────────────
+# Standard Altman (1968) coefficients for public manufacturing firms.
+# Modify these for custom stress-testing or non-manufacturing models.
+altman_z_coefficients:
+  x1_wc_ta: 1.2                  # Working Capital / Total Assets
+  x2_re_ta: 1.4                  # Retained Earnings / Total Assets
+  x3_ebit_ta: 3.3                # EBIT / Total Assets
+  x4_mcap_tl: 0.6                # Market Cap / Total Liabilities
+  x5_rev_ta: 1.0                 # Revenue / Total Assets
+
+
+# ── Sector-Specific Overrides ─────────────────────────────────────────────────
+# Terminal growth rates and risk adjustments by sector.
+# If a company's sector is not listed, global defaults apply.
+sector_overrides:
+  Technology:
+    terminal_growth_rate: 0.04    # Higher long-run growth for tech
+    max_fcf_growth_cap: 0.30      # Allow higher growth for high-growth tech
+    equity_risk_premium: 0.065    # Slightly higher risk premium
+
+  Healthcare:
+    terminal_growth_rate: 0.035
+    max_fcf_growth_cap: 0.25
+
+  Financial Services:
+    terminal_growth_rate: 0.025
+    # Z-score not applicable for financials — use modified model
+    altman_z_coefficients:
+      x1_wc_ta: 0.0              # WC meaningless for banks
+      x2_re_ta: 1.5
+      x3_ebit_ta: 3.25
+      x4_mcap_tl: 0.6
+      x5_rev_ta: 1.05
+
+  Utilities:
+    terminal_growth_rate: 0.02    # Slow, regulated growth
+    max_fcf_growth_cap: 0.10
+    equity_risk_premium: 0.04     # Lower risk
+
+  Consumer Defensive:
+    terminal_growth_rate: 0.025
+    equity_risk_premium: 0.045
+
+  Energy:
+    terminal_growth_rate: 0.02
+    max_fcf_growth_cap: 0.15
+    equity_risk_premium: 0.07     # Commodity risk
+
+  Real Estate:
+    terminal_growth_rate: 0.025
+    # REITs: use FFO-based model (flag only)
+    use_ffo_model: true
+
+  Industrials:
+    terminal_growth_rate: 0.03
+    equity_risk_premium: 0.055
+
+  Communication Services:
+    terminal_growth_rate: 0.035
+    max_fcf_growth_cap: 0.25
+
+  Consumer Cyclical:
+    terminal_growth_rate: 0.03
+    equity_risk_premium: 0.06
+
+  Basic Materials:
+    terminal_growth_rate: 0.025
+    equity_risk_premium: 0.065
+
+
+# ── Scenario Definitions ──────────────────────────────────────────────────────
+# Run "Bear", "Base", "Bull" scenario loops by switching scenario name.
+# Each scenario multiplies or overrides specific parameters.
+scenarios:
+  base:
+    label: "Base Case"
+    fcf_growth_multiplier: 1.0    # No adjustment
+    terminal_growth_adjustment: 0.0
+    wacc_adjustment: 0.0
+    erp_adjustment: 0.0
+
+  bear:
+    label: "Bear Case (Stress)"
+    fcf_growth_multiplier: 0.6    # 40% haircut to growth
+    terminal_growth_adjustment: -0.01  # Lower perpetual growth by 1%
+    wacc_adjustment: 0.02         # +2% to discount rate (higher risk)
+    erp_adjustment: 0.02          # +2% equity risk premium
+    mos_strong_buy: 40.0          # Require higher MoS in bear case
+    mos_buy: 30.0
+
+  bull:
+    label: "Bull Case (Optimistic)"
+    fcf_growth_multiplier: 1.3    # 30% boost to growth
+    terminal_growth_adjustment: 0.005  # Higher perpetual growth
+    wacc_adjustment: -0.01        # -1% to discount rate
+    erp_adjustment: -0.01         # Lower risk premium
+    mos_strong_buy: 20.0          # Lower MoS threshold in bull case
+    mos_buy: 10.0
+
+  deep_value:
+    label: "Deep Value (Contrarian)"
+    fcf_growth_multiplier: 0.8
+    terminal_growth_adjustment: 0.0
+    wacc_adjustment: 0.01
+    erp_adjustment: 0.01
+    mos_strong_buy: 50.0          # Only buy at massive discounts
+    mos_buy: 40.0
+    z_safe_threshold: 3.5         # Stricter Z-score requirement
+
+
+# ── API Rate Limits ───────────────────────────────────────────────────────────
+api_limits:
+  fmp:
+    max_requests_per_day: 250
+    max_concurrent: 5             # Concurrent async requests
+    base_delay_seconds: 0.5       # Min delay between requests
+    max_retries: 3
+    backoff_base: 2.0             # Exponential backoff base
+    backoff_max_seconds: 60
+
+  fred:
+    max_concurrent: 3
+    base_delay_seconds: 1.0
+    max_retries: 3
+    backoff_base: 2.0
+    backoff_max_seconds: 30
+
+  yfinance:
+    max_concurrent: 10
+    base_delay_seconds: 0.2
+    max_retries: 3
+    backoff_base: 1.5
+    backoff_max_seconds: 15
+
+  bulk_db:
+    batch_size: 500               # Rows per bulk insert
+    flush_interval_seconds: 2.0
