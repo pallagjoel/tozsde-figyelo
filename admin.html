@@ -37,6 +37,9 @@
     <a class="nav-item" data-page="bulkimport" id="nav-bulkimport">
       <i class="fas fa-file-import"></i> Data Import Wizard
     </a>
+    <a class="nav-item" data-page="datasources" id="nav-datasources">
+      <i class="fas fa-database"></i> Data Sources
+    </a>
   </nav>
 
   <!-- ══════════════ MAIN CONTENT ══════════════ -->
@@ -158,6 +161,24 @@
           <div style="font-size:0.8rem; font-weight:600; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase;">Error Log</div>
           <div id="importErrorLog" style="background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); border-radius:8px; padding:12px; font-family:monospace; font-size:0.8rem; color:var(--accent-danger); max-height:150px; overflow-y:auto; line-height:1.5;">
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Data Sources Page ── -->
+    <section class="page-section" id="page-datasources">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title"><i class="fas fa-database"></i> Data Sources</h1>
+          <p class="section-subtitle">Manage external APIs and databases for retrieving market data</p>
+        </div>
+        <button class="btn btn-primary" id="openNewProviderBtn"><i class="fas fa-plus"></i> New Database</button>
+      </div>
+
+      <div class="glass-card" style="padding:0; overflow:hidden;">
+        <div style="padding:16px; border-bottom:1px solid var(--glass-border); font-weight:600;">Available Providers</div>
+        <div id="providersList" style="padding: 16px;">
+          <!-- Populated by JS -->
         </div>
       </div>
     </section>
@@ -296,6 +317,46 @@
     </div>
   </div>
 </div>
+</div>
+
+<!-- ══════════════ NEW PROVIDER MODAL ══════════════ -->
+<div class="modal-overlay" id="providerModal" style="display:none;">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <div class="modal-title" id="providerModalTitle">Data Provider</div>
+      <button class="modal-close" id="closeProviderModalBtn"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="providerId">
+      
+      <div class="input-wrapper" style="margin-bottom:16px;">
+        <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">Provider Name</label>
+        <input type="text" class="stock-input" id="providerName" placeholder="e.g. Polygon.io">
+      </div>
+      
+      <div class="input-wrapper" style="margin-bottom:16px;">
+        <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">Type / Integration</label>
+        <select class="stock-input" id="providerType">
+          <option value="custom">Custom REST API</option>
+          <option value="yahoo">Yahoo Finance (Preset)</option>
+          <option value="alphavantage">Alpha Vantage (Preset)</option>
+          <option value="fmp">Financial Modeling Prep (Preset)</option>
+        </select>
+      </div>
+
+      <div class="input-wrapper" style="margin-bottom:16px;">
+        <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">Base URL</label>
+        <input type="text" class="stock-input" id="providerBaseUrl" placeholder="https://api.polygon.io/v2">
+      </div>
+      
+      <div class="input-wrapper" style="margin-bottom:24px;">
+        <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">API Key (Secret)</label>
+        <input type="password" class="stock-input" id="providerApiKey" placeholder="Enter API key...">
+      </div>
+
+      <button class="btn btn-primary" id="saveProviderBtn" style="width:100%; justify-content:center;">Save Provider</button>
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════ TOAST CONTAINER ══════════════ -->

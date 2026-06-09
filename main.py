@@ -28,7 +28,7 @@ import re
 import threading
 
 import database as db
-import yfinance_client as yfc
+import data_factory as yfc
 
 # Quant engine imports
 from models import (
@@ -1583,6 +1583,69 @@ def admin_stats(current_user: User = Depends(get_current_user)):
 
 # ── Run entry point ───────────────────────────────────────────────────────────
 
+# ── Data Providers ──────────────────────────────────────────────────────────────
+
+from pydantic import BaseModel
+from models import DataProvider
+
+class ProviderCreate(BaseModel):
+    name: str
+    provider_type: str
+    base_url: str = ""
+    api_key: str = ""
+    is_custom: bool = True
+
+class ProviderUpdate(BaseModel):
+    api_key: str = ""
+    base_url: str = ""
+
+@app.get("/api/admin/providers", summary="List all data providers")
+def list_providers(current_user: User = Depends(get_current_user)):
+    with get_session() as session:
+        providers = session.query(DataProvider).all()
+        return [p.to_dict() for p in providers]
+
+@app.post("/api/admin/providers", summary="Add custom data provider")
+def add_provider(req: ProviderCreate, current_user: User = Depends(get_current_user)):
+    with get_session() as session:
+        if session.query(DataProvider).filter_by(name=req.name).first():
+            raise HTTPException(400, detail="Provider name already exists.")
+        
+        provider = DataProvider(
+            name=req.name,
+            provider_type=req.provider_type,
+            base_url=req.base_url,
+            api_key=req.api_key,
+            is_custom=req.is_custom
+        )
+        session.add(provider)
+        session.commit()
+        return {"success": True, "provider": provider.to_dict()}
+
+@app.put("/api/admin/providers/{provider_id}", summary="Update API Key")
+def update_provider(provider_id: int, req: ProviderUpdate, current_user: User = Depends(get_current_user)):
+    with get_session() as session:
+        provider = session.query(DataProvider).filter_by(id=provider_id).first()
+        if not provider:
+            raise HTTPException(404, detail="Provider not found")
+        
+        provider.api_key = req.api_key
+        provider.base_url = req.base_url
+        session.commit()
+        return {"success": True}
+
+@app.put("/api/admin/providers/{provider_id}/activate", summary="Set active provider")
+def activate_provider(provider_id: int, current_user: User = Depends(get_current_user)):
+    with get_session() as session:
+        provider = session.query(DataProvider).filter_by(id=provider_id).first()
+        if not provider:
+            raise HTTPException(404, detail="Provider not found")
+            
+        session.query(DataProvider).update({"is_active": False})
+        provider.is_active = True
+        session.commit()
+        return {"success": True, "active_provider": provider.name}
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

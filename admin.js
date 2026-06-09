@@ -530,3 +530,152 @@ function setupEventListeners() {
     }
   });
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DATA PROVIDERS LOGIC
+// ══════════════════════════════════════════════════════════════════════════════
+
+const els_prov = {
+  list: $('providersList'),
+  newBtn: $('openNewProviderBtn'),
+  modal: $('providerModal'),
+  closeBtn: $('closeProviderModalBtn'),
+  saveBtn: $('saveProviderBtn'),
+  id: $('providerId'),
+  name: $('providerName'),
+  type: $('providerType'),
+  baseUrl: $('providerBaseUrl'),
+  apiKey: $('providerApiKey')
+};
+
+async function loadProviders() {
+  try {
+    const data = await api('/api/admin/providers');
+    renderProviders(data);
+  } catch (e) {
+    showToast('Failed to load providers: ' + e.message, 'error');
+  }
+}
+
+function renderProviders(providers) {
+  if (!providers || providers.length === 0) {
+    els_prov.list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 24px;">No providers configured.</div>';
+    return;
+  }
+  
+  els_prov.list.innerHTML = providers.map(p => `
+    <div class="stat-card" style="flex-direction:row; justify-content:space-between; align-items:center; padding:16px; margin-bottom:12px; border: 1px solid ${p.is_active ? 'var(--accent-primary)' : 'var(--glass-border)'}; background: ${p.is_active ? 'rgba(124, 58, 237, 0.1)' : 'var(--glass-bg)'};">
+      <div>
+        <div style="font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+          ${p.name}
+          ${p.is_active ? '<span style="font-size:0.7rem; background:var(--accent-primary); color:white; padding:2px 8px; border-radius:12px;">ACTIVE</span>' : ''}
+          ${p.is_custom ? '<span style="font-size:0.7rem; background:var(--glass-border); color:var(--text-muted); padding:2px 8px; border-radius:12px;">CUSTOM</span>' : ''}
+        </div>
+        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Type: ${p.provider_type} ${p.base_url ? '| URL: ' + p.base_url : ''}</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        ${!p.is_active ? `<button class="btn btn-primary btn-sm" onclick="activateProvider(${p.id})">Set Active</button>` : ''}
+        <button class="btn btn-secondary btn-sm" onclick="editProvider(${p.id}, '${p.name}', '${p.provider_type}', '${p.base_url || ''}', '${p.api_key || ''}', ${p.is_custom})"><i class="fas fa-cog"></i> Config</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.activateProvider = async function(id) {
+  try {
+    const res = await api(`/api/admin/providers/${id}/activate`, { method: 'PUT' });
+    if (res.success) {
+      showToast('Provider set to active successfully!', 'success');
+      loadProviders();
+    }
+  } catch (e) {
+    showToast('Failed to activate: ' + e.message, 'error');
+  }
+};
+
+window.editProvider = function(id, name, type, baseUrl, apiKey, isCustom) {
+  els_prov.id.value = id;
+  els_prov.name.value = name;
+  els_prov.type.value = type;
+  els_prov.baseUrl.value = baseUrl;
+  els_prov.apiKey.value = apiKey;
+  
+  els_prov.name.disabled = !isCustom;
+  els_prov.type.disabled = !isCustom;
+  
+  els_prov.modal.style.display = 'flex';
+};
+
+els_prov.newBtn?.addEventListener('click', () => {
+  els_prov.id.value = '';
+  els_prov.name.value = '';
+  els_prov.type.value = 'custom';
+  els_prov.baseUrl.value = '';
+  els_prov.apiKey.value = '';
+  
+  els_prov.name.disabled = false;
+  els_prov.type.disabled = false;
+  
+  els_prov.modal.style.display = 'flex';
+});
+
+els_prov.closeBtn?.addEventListener('click', () => {
+  els_prov.modal.style.display = 'none';
+});
+
+els_prov.saveBtn?.addEventListener('click', async () => {
+  const id = els_prov.id.value;
+  const payload = {
+    name: els_prov.name.value,
+    provider_type: els_prov.type.value,
+    base_url: els_prov.baseUrl.value,
+    api_key: els_prov.apiKey.value,
+    is_custom: els_prov.type.value === 'custom'
+  };
+  
+  if (!payload.name) return showToast('Name is required', 'error');
+  
+  try {
+    if (id) {
+      // Update existing (only api key and base url are allowed to update for now)
+      await api(`/api/admin/providers/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: payload.api_key, base_url: payload.base_url })
+      });
+      showToast('Provider configured successfully', 'success');
+    } else {
+      // Create new
+      await api('/api/admin/providers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      showToast('Custom provider added', 'success');
+    }
+    els_prov.modal.style.display = 'none';
+    loadProviders();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+});
+
+// Hook into existing init
+const originalInit = window.onload;
+window.onload = function() {
+  if (originalInit) originalInit();
+  
+  // Navigation handling for Data Sources tab
+  const navSources = document.getElementById('nav-datasources');
+  if (navSources) {
+    navSources.addEventListener('click', () => {
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      navSources.classList.add('active');
+      
+      document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
+      document.getElementById('page-datasources').classList.add('active');
+      
+      loadProviders();
+    });
+  }
+};

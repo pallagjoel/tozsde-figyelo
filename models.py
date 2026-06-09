@@ -391,6 +391,33 @@ class MacroRate(Base):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# DATA PROVIDERS (Multi-database routing)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class DataProvider(Base):
+    """
+    Configuration for external data sources (Yahoo, Alpha Vantage, FMP, Custom).
+    """
+    __tablename__ = "data_providers"
+
+    id:             Mapped[int]           = mapped_column(primary_key=True, autoincrement=True)
+    name:           Mapped[str]           = mapped_column(String(100), nullable=False, unique=True)
+    provider_type:  Mapped[str]           = mapped_column(String(50), nullable=False) # e.g. "yahoo", "alphavantage", "fmp", "custom"
+    base_url:       Mapped[Optional[str]] = mapped_column(String(255))
+    api_key:        Mapped[Optional[str]] = mapped_column(String(255))
+    is_active:      Mapped[bool]          = mapped_column(Boolean, default=False)
+    is_custom:      Mapped[bool]          = mapped_column(Boolean, default=False)
+    created_at:     Mapped[datetime]      = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id, "name": self.name, "provider_type": self.provider_type,
+            "base_url": self.base_url, "api_key": self.api_key,
+            "is_active": self.is_active, "is_custom": self.is_custom
+        }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # DYNAMIC METADATA (Admin Platform / Salesforce-style architecture)
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -492,6 +519,27 @@ def init_quant_db():
     stock_history, stock_cache) used by the Phase 1 dashboard.
     """
     Base.metadata.create_all(engine)
+    
+    # Seed default data providers
+    session = SessionLocal()
+    try:
+        defaults = [
+            {"name": "Yahoo Finance", "provider_type": "yahoo", "is_active": True},
+            {"name": "Alpha Vantage", "provider_type": "alphavantage", "base_url": "https://www.alphavantage.co/query"},
+            {"name": "Financial Modeling Prep", "provider_type": "fmp", "base_url": "https://financialmodelingprep.com/api/v3"},
+        ]
+        
+        for d in defaults:
+            if not session.query(DataProvider).filter_by(name=d["name"]).first():
+                provider = DataProvider(**d)
+                session.add(provider)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"Failed to seed defaults: {e}")
+    finally:
+        session.close()
+        
     print("[models] Quant database schema initialized successfully.")
 
 
