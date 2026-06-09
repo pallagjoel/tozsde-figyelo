@@ -6,61 +6,80 @@ Routes data requests to the active provider selected by the user.
 from typing import Optional
 from models import get_session, DataProvider
 import yfinance_client as yfc
+import alphavantage_client as av_client
+import fmp_client as fmp_client
 
-# Currently supported providers (in the future, these can be split into separate modules)
-# We use Yahoo Finance as the robust fallback/default.
-
-def get_active_provider() -> DataProvider:
-    """Retrieve the currently active data provider configuration."""
+def get_active_provider() -> dict:
+    """Retrieve the currently active data provider configuration as a dictionary to avoid detached instances."""
     with get_session() as session:
         active = session.query(DataProvider).filter(DataProvider.is_active == True).first()
         if not active:
-            # Fallback to Yahoo Finance if nothing is active
-            return DataProvider(name="Fallback", provider_type="yahoo")
-        return active
+            return {"name": "Fallback", "provider_type": "yahoo", "api_key": "", "base_url": ""}
+        return {"name": active.name, "provider_type": active.provider_type, "api_key": active.api_key, "base_url": active.base_url}
 
 # ── Routing Functions ────────────────────────────────────────────────────────
 
 def fetch_ticker_info(ticker: str) -> dict:
     provider = get_active_provider()
     
-    # Example logic for routing (currently everything falls back to YFC 
-    # until the specific provider plugins are fully coded out, but this is the architecture)
-    
-    if provider.provider_type == "alphavantage":
-        # TODO: Implement Alpha Vantage specific fetching
-        print(f"[data_factory] Routing to Alpha Vantage for {ticker}")
-        return yfc.fetch_ticker_info(ticker) # Fallback for now
+    if provider["provider_type"] == "alphavantage" and provider["api_key"]:
+        try:
+            print(f"[data_factory] Routing to Alpha Vantage for {ticker}")
+            return av_client.fetch_ticker_info(ticker, provider["api_key"], provider["base_url"])
+        except Exception as e:
+            print(f"[data_factory] Alpha Vantage failed ({e}), falling back to Yahoo Finance")
+            
+    elif provider["provider_type"] == "fmp" and provider["api_key"]:
+        try:
+            print(f"[data_factory] Routing to FMP for {ticker}")
+            return fmp_client.fetch_ticker_info(ticker, provider["api_key"], provider["base_url"])
+        except Exception as e:
+            print(f"[data_factory] FMP failed ({e}), falling back to Yahoo Finance")
+            
+    elif provider["provider_type"] == "custom":
+        print(f"[data_factory] Routing to Custom Provider '{provider['name']}' for {ticker}")
+        # Custom provider fallback is currently Yahoo Finance until webhooks are supported
+        pass
         
-    elif provider.provider_type == "fmp":
-        # TODO: Implement FMP specific fetching
-        print(f"[data_factory] Routing to FMP for {ticker}")
-        return yfc.fetch_ticker_info(ticker) # Fallback for now
-        
-    elif provider.provider_type == "custom":
-        print(f"[data_factory] Routing to Custom Provider '{provider.name}' for {ticker}")
-        return yfc.fetch_ticker_info(ticker)
-        
-    else:
-        # Default: Yahoo Finance
-        return yfc.fetch_ticker_info(ticker)
+    # Default: Yahoo Finance
+    return yfc.fetch_ticker_info(ticker)
 
 
 def fetch_live_price(ticker: str) -> dict:
     provider = get_active_provider()
-    if provider.provider_type == "yahoo":
-        return yfc.fetch_live_price(ticker)
     
-    # Fallback to yahoo for missing implementations
+    if provider["provider_type"] == "alphavantage" and provider["api_key"]:
+        try:
+            return av_client.fetch_live_price(ticker, provider["api_key"], provider["base_url"])
+        except Exception as e:
+            print(f"[data_factory] Alpha Vantage failed ({e}), falling back to Yahoo Finance")
+            
+    elif provider["provider_type"] == "fmp" and provider["api_key"]:
+        try:
+            return fmp_client.fetch_live_price(ticker, provider["api_key"], provider["base_url"])
+        except Exception as e:
+            print(f"[data_factory] FMP failed ({e}), falling back to Yahoo Finance")
+            
+    # Fallback to yahoo
     return yfc.fetch_live_price(ticker)
 
 
 def fetch_history(ticker: str, period: str = "1yr") -> list[dict]:
     provider = get_active_provider()
-    if provider.provider_type == "yahoo":
-        return yfc.fetch_history(ticker, period)
     
-    # Fallback to yahoo for missing implementations
+    if provider["provider_type"] == "alphavantage" and provider["api_key"]:
+        try:
+            return av_client.fetch_history(ticker, period, provider["api_key"], provider["base_url"])
+        except Exception as e:
+            print(f"[data_factory] Alpha Vantage failed ({e}), falling back to Yahoo Finance")
+            
+    elif provider["provider_type"] == "fmp" and provider["api_key"]:
+        try:
+            return fmp_client.fetch_history(ticker, period, provider["api_key"], provider["base_url"])
+        except Exception as e:
+            print(f"[data_factory] FMP failed ({e}), falling back to Yahoo Finance")
+            
+    # Fallback to yahoo
     return yfc.fetch_history(ticker, period)
 
 

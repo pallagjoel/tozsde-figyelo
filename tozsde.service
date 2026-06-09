@@ -1,0 +1,13 @@
+[Unit]
+Description=Tozsde Figyelo FastAPI Server
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/tozsde-figyelo
+Environment="PATH=/home/ubuntu/tozsde-figyelo/venv/bin"
+ExecStart=/home/ubuntu/tozsde-figyelo/venv/bin/python3 main.py
+
+[Install]
+WantedBy=multi-user.target
