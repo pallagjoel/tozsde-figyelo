@@ -394,11 +394,15 @@ def optimize_portfolio(
     histories = {}
 
     for ticker in ticker_list:
-        if not db.stock_exists(current_user.id, ticker):
+        has_stock = db.stock_exists(current_user.id, ticker)
+        has_history = db.get_stock_history(ticker, limit=1)
+        
+        if not has_stock or not has_history:
             try:
-                info = yfc.fetch_ticker_info(ticker)
-                db.add_tracked_stock(current_user.id, info["metadata"])
-                db.upsert_stock_cache(ticker, info["cache"])
+                if not has_stock:
+                    info = yfc.fetch_ticker_info(ticker)
+                    db.add_tracked_stock(current_user.id, info["metadata"])
+                    db.upsert_stock_cache(ticker, info["cache"])
                 hist = yfc.fetch_history(ticker, period=period)
                 if hist:
                     db.upsert_stock_history(ticker, hist)
