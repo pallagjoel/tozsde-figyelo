@@ -6,7 +6,14 @@ Wraps the yfinance library to fetch stock data and compute technical indicators.
 import yfinance as yf
 import numpy as np
 import pandas as pd
+import requests
 from typing import Optional
+
+# Setup custom session to avoid Yahoo Finance IP blocking on Datacenters
+custom_session = requests.Session()
+custom_session.headers.update({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+})
 
 
 # ── Ticker Metadata & Live Price ─────────────────────────────────────────────
@@ -17,7 +24,7 @@ def fetch_ticker_info(ticker: str) -> dict:
     Returns a dict compatible with database.add_tracked_stock() and upsert_stock_cache().
     Raises ValueError if the ticker is invalid.
     """
-    t = yf.Ticker(ticker.upper())
+    t = yf.Ticker(ticker.upper(), session=custom_session)
     info = t.info
 
     # Validate — yfinance returns minimal/empty info for unknown tickers
@@ -71,7 +78,7 @@ def fetch_ticker_info(ticker: str) -> dict:
 
 def fetch_live_price(ticker: str) -> dict:
     """Lightweight fetch of only the current price data (for refresh)."""
-    t = yf.Ticker(ticker.upper())
+    t = yf.Ticker(ticker.upper(), session=custom_session)
     info = t.info
 
     def safe(key, default=None):
@@ -114,7 +121,7 @@ def fetch_history(ticker: str, period: str = "1yr") -> list[dict]:
     Returns a list of dicts suitable for database.upsert_stock_history().
     """
     yf_period = PERIOD_MAP.get(period, "1y")
-    t = yf.Ticker(ticker.upper())
+    t = yf.Ticker(ticker.upper(), session=custom_session)
     df = t.history(period=yf_period, auto_adjust=True)
 
     if df.empty:

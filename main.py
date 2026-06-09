@@ -918,7 +918,7 @@ def _bulk_import_worker(tickers: list[str], results: dict, user_id: int = 1):
             continue
 
         try:
-            yf_ticker = yf.Ticker(ticker)
+            yf_ticker = yf.Ticker(ticker, session=yfc.custom_session)
             info = yf_ticker.info or {}
 
             if not info.get("shortName") and not info.get("longName"):
