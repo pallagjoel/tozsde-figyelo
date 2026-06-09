@@ -535,6 +535,8 @@ function setupEventListeners() {
 // DATA PROVIDERS LOGIC
 // ══════════════════════════════════════════════════════════════════════════════
 
+const $ = id => document.getElementById(id);
+
 const els_prov = {
   list: $('providersList'),
   newBtn: $('openNewProviderBtn'),
@@ -550,8 +552,9 @@ const els_prov = {
 
 async function loadProviders() {
   try {
-    const data = await api('/api/admin/providers');
-    renderProviders(data);
+    const data = await adminApi('/api/admin/providers');
+    const providers = await data.json();
+    renderProviders(providers);
   } catch (e) {
     showToast('Failed to load providers: ' + e.message, 'error');
   }
@@ -583,8 +586,8 @@ function renderProviders(providers) {
 
 window.activateProvider = async function(id) {
   try {
-    const res = await api(`/api/admin/providers/${id}/activate`, { method: 'PUT' });
-    if (res.success) {
+    const res = await adminApi(`/api/admin/providers/${id}/activate`, { method: 'PUT' });
+    if (res.ok) {
       showToast('Provider set to active successfully!', 'success');
       loadProviders();
     }
@@ -638,7 +641,7 @@ els_prov.saveBtn?.addEventListener('click', async () => {
   try {
     if (id) {
       // Update existing (only api key and base url are allowed to update for now)
-      await api(`/api/admin/providers/${id}`, {
+      await adminApi(`/api/admin/providers/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ api_key: payload.api_key, base_url: payload.base_url })
@@ -646,7 +649,7 @@ els_prov.saveBtn?.addEventListener('click', async () => {
       showToast('Provider configured successfully', 'success');
     } else {
       // Create new
-      await api('/api/admin/providers', {
+      await adminApi('/api/admin/providers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
