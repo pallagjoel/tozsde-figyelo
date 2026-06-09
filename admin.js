@@ -12,7 +12,7 @@ function adminApi(endpoint, options = {}) {
     ...(options.headers || {})
   };
   
-  const url = endpoint.startsWith('http') ? endpoint : `http://localhost:8000${endpoint}`;
+  const url = endpoint.startsWith('http') ? endpoint : `${endpoint}`;
   
   return fetch(url, { ...options, headers }).then(async res => {
     if (res.status === 401) {
@@ -62,7 +62,7 @@ function initNavigation() {
 
 async function loadObjects() {
   try {
-    const res = await adminApi("http://localhost:8000/api/admin/objects");
+    const res = await adminApi("/api/admin/objects");
     const data = await res.json();
     customObjects = data.objects || [];
     renderObjectsList();
@@ -118,7 +118,7 @@ async function loadFieldsForSelected() {
     const tbody = document.getElementById("customFieldsTableBody");
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px;">Loading fields...</td></tr>`;
     
-    const res = await adminApi(`http://localhost:8000/api/admin/fields?object_id=${selectedObjectId}`);
+    const res = await adminApi(`/api/admin/fields?object_id=${selectedObjectId}`);
     const data = await res.json();
     customFields = data.fields || [];
     
@@ -182,7 +182,7 @@ document.getElementById("saveObjectBtn").addEventListener("click", async () => {
   }
   
   try {
-    const res = await adminApi("http://localhost:8000/api/admin/objects", {
+    const res = await adminApi("/api/admin/objects", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(payload)
@@ -267,7 +267,7 @@ document.getElementById("saveFormulaBtn").addEventListener("click", async () => 
   }
   
   const method = currentFieldId ? "PUT" : "POST";
-  const url = currentFieldId ? `http://localhost:8000/api/admin/fields/${currentFieldId}` : `http://localhost:8000/api/admin/fields`;
+  const url = currentFieldId ? `/api/admin/fields/${currentFieldId}` : `/api/admin/fields`;
   
   try {
     const res = await adminApi(url, {
@@ -315,7 +315,7 @@ window.deleteField = async function(id) {
   if (!confirm("Are you sure you want to delete this field? Data stored in this field will be lost.")) return;
   
   try {
-    const res = await adminApi(`http://localhost:8000/api/admin/fields/${id}`, { method: "DELETE" });
+    const res = await adminApi(`/api/admin/fields/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Failed to delete field");
     showToast("Field deleted", "success");
     loadFieldsForSelected();
@@ -329,7 +329,7 @@ window.deleteField = async function(id) {
 
 async function loadFieldCatalog() {
   try {
-    const res = await adminApi("http://localhost:8000/api/records/fields/catalog");
+    const res = await adminApi("/api/records/fields/catalog");
     const data = await res.json();
     globalCatalog = data;
     
@@ -379,7 +379,7 @@ document.getElementById("testFormulaBtn").addEventListener("click", async () => 
   
   try {
     // We assume testing against a dummy AAPL for syntax check
-    const res = await adminApi(`http://localhost:8000/api/admin/fields/test?formula=${encodeURIComponent(formula)}&ticker=AAPL`, { method: "POST" });
+    const res = await adminApi(`/api/admin/fields/test?formula=${encodeURIComponent(formula)}&ticker=AAPL`, { method: "POST" });
     const data = await res.json();
     
     if (!res.ok) {
@@ -416,7 +416,7 @@ document.getElementById('startBulkImportBtn').addEventListener('click', async ()
   document.getElementById('importErrorLog').innerHTML = "";
   
   try {
-    const res = await adminApi("http://localhost:8000/api/stocks/bulk-import", {
+    const res = await adminApi("/api/stocks/bulk-import", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({ tickers })
@@ -437,7 +437,7 @@ document.querySelectorAll('.index-import-btn').forEach(btn => {
     document.getElementById('importStatusText').textContent = `Fetching constituents for ${index.toUpperCase()}...`;
     
     try {
-      const res = await adminApi(`http://localhost:8000/api/stocks/import-index?index=${index}`, { method: "POST" });
+      const res = await adminApi(`/api/stocks/import-index?index=${index}`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Import failed to start");
       
@@ -458,7 +458,7 @@ function startImportPolling() {
   if (importInterval) clearInterval(importInterval);
   importInterval = setInterval(async () => {
     try {
-      const res = await adminApi("http://localhost:8000/api/stocks/import-status");
+      const res = await adminApi("/api/stocks/import-status");
       const data = await res.json();
       
       const total = data.total || 1;

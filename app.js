@@ -6,7 +6,7 @@
 'use strict';
 
 // ── Config ────────────────────────────────────────────────────────────────────
-const API_BASE = 'http://localhost:8000';
+const API_BASE = '';
 
 async function authFetch(url, options = {}) {
   const token = localStorage.getItem('quant_auth_token');
