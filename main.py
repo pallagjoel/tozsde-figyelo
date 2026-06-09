@@ -967,13 +967,14 @@ def _bulk_import_worker(tickers: list[str], results: dict, user_id: int = 1):
         except Exception as e:
             errors.append({"ticker": ticker, "error": str(e)[:100]})
 
+        # Update status dynamically
+        results["imported"] = imported
+        results["errors"] = errors
+        results["skipped"] = skipped
+
     session.commit()
     session.close()
 
-    results["imported"] = imported
-    results["errors"] = errors
-    results["skipped"] = skipped
-    results["total"] = len(tickers)
     results["done"] = True
 
 
