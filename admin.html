@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Setup — Tőzsde Figyelő</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/styles.css?v=mobile" />
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -73,21 +73,23 @@
             <button class="btn btn-secondary btn-sm" id="openNewFieldBtn"><i class="fas fa-plus"></i> New Field</button>
           </div>
           
-          <table class="valuation-table" style="width:100%;">
-            <thead>
-              <tr>
-                <th>API Name</th>
-                <th>Label</th>
-                <th>Type</th>
-                <th>Formula/Lookup</th>
-                <th>Status</th>
-                <th style="text-align:right;">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="customFieldsTableBody">
-              <tr><td colspan="6" style="text-align:center; padding:20px;">Select an object to load fields...</td></tr>
-            </tbody>
-          </table>
+          <div class="table-responsive">
+            <table class="valuation-table" style="width:100%;">
+              <thead>
+                <tr>
+                  <th>API Name</th>
+                  <th>Label</th>
+                  <th>Type</th>
+                  <th>Formula/Lookup</th>
+                  <th>Status</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="customFieldsTableBody">
+                <tr><td colspan="6" style="text-align:center; padding:20px;">Select an object to load fields...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>
@@ -362,6 +364,6 @@
 <!-- ══════════════ TOAST CONTAINER ══════════════ -->
 <div class="toast-container" id="toastContainer"></div>
 
-<script src="/static/admin.js?v=3"></script>
+<script src="/static/admin.js?v=4"></script>
 </body>
 </html>

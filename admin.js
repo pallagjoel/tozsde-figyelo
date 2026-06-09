@@ -567,7 +567,7 @@ function renderProviders(providers) {
   }
   
   els_prov.list.innerHTML = providers.map(p => `
-    <div class="stat-card" style="flex-direction:row; justify-content:space-between; align-items:center; padding:16px; margin-bottom:12px; border: 1px solid ${p.is_active ? 'var(--accent-primary)' : 'var(--glass-border)'}; background: ${p.is_active ? 'rgba(124, 58, 237, 0.1)' : 'var(--glass-bg)'};">
+    <div class="stat-card provider-card" style="flex-direction:row; justify-content:space-between; align-items:center; padding:16px; margin-bottom:12px; border: 1px solid ${p.is_active ? 'var(--accent-primary)' : 'var(--glass-border)'}; background: ${p.is_active ? 'rgba(124, 58, 237, 0.1)' : 'var(--glass-bg)'};">
       <div>
         <div style="font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
           ${p.name}
