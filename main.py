@@ -74,6 +74,10 @@ app.include_router(auth_router)
 def serve_frontend():
     return FileResponse(os.path.join(BASE_DIR, "index.html"))
 
+@app.get("/admin.html", include_in_schema=False)
+def serve_admin():
+    return FileResponse(os.path.join(BASE_DIR, "admin.html"))
+
 
 # ── Request / Response Models ─────────────────────────────────────────────────
 
