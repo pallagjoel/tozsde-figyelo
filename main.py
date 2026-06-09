@@ -71,7 +71,11 @@ app.mount("/static", StaticFiles(directory=BASE_DIR), name="static")
 app.include_router(auth_router)
 
 @app.get("/", include_in_schema=False)
-def serve_frontend():
+def serve_frontend_root():
+    return FileResponse(os.path.join(BASE_DIR, "index.html"))
+
+@app.get("/index.html", include_in_schema=False)
+def serve_frontend_index():
     return FileResponse(os.path.join(BASE_DIR, "index.html"))
 
 @app.get("/admin.html", include_in_schema=False)
