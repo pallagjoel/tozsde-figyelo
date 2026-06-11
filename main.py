@@ -824,6 +824,16 @@ class CustomRecordUpdate(BaseModel):
     name: Optional[str] = None
     data: Optional[dict] = None
 
+class PageLayoutCreate(BaseModel):
+    object_id: int # -1 for Stock
+    name: str
+    layout_data: dict = {}
+
+class PageLayoutUpdate(BaseModel):
+    name: Optional[str] = None
+    is_active: Optional[bool] = None
+    layout_data: Optional[dict] = None
+
 
 # ── Safe Formula Evaluator ────────────────────────────────────────────────────
 
@@ -1547,6 +1557,74 @@ def delete_custom_record(record_id: int, current_user: User = Depends(get_curren
         if not record:
             raise HTTPException(404, "Record not found")
         session.delete(record)
+        session.commit()
+        return {"success": True}
+    finally:
+        session.close()
+
+
+# ── Admin: Page Layouts ───────────────────────────────────────────────────────
+
+from models import PageLayout
+
+@app.get("/api/admin/layouts", summary="List page layouts for an object")
+def list_page_layouts(object_id: Optional[int] = Query(None), current_user: User = Depends(get_current_user)):
+    session = get_session()
+    try:
+        q = session.query(PageLayout).filter(PageLayout.user_id == current_user.id)
+        if object_id is not None:
+            if object_id == -1:
+                q = q.filter(PageLayout.object_id == None)
+            else:
+                q = q.filter(PageLayout.object_id == object_id)
+        layouts = q.all()
+        return {"layouts": [l.to_dict() for l in layouts]}
+    finally:
+        session.close()
+
+@app.post("/api/admin/layouts", summary="Create a new page layout")
+def create_page_layout(req: PageLayoutCreate, current_user: User = Depends(get_current_user)):
+    session = get_session()
+    try:
+        obj_id = req.object_id if req.object_id != -1 else None
+        layout = PageLayout(
+            user_id=current_user.id,
+            object_id=obj_id,
+            name=req.name,
+            layout_data=req.layout_data
+        )
+        session.add(layout)
+        session.commit()
+        return {"success": True, "layout": layout.to_dict()}
+    finally:
+        session.close()
+
+@app.put("/api/admin/layouts/{layout_id}", summary="Update a page layout")
+def update_page_layout(layout_id: int, req: PageLayoutUpdate, current_user: User = Depends(get_current_user)):
+    session = get_session()
+    try:
+        layout = session.query(PageLayout).filter(PageLayout.id == layout_id, PageLayout.user_id == current_user.id).first()
+        if not layout:
+            raise HTTPException(404, "Layout not found")
+        if req.name is not None:
+            layout.name = req.name
+        if req.is_active is not None:
+            layout.is_active = req.is_active
+        if req.layout_data is not None:
+            layout.layout_data = req.layout_data
+        session.commit()
+        return {"success": True, "layout": layout.to_dict()}
+    finally:
+        session.close()
+
+@app.delete("/api/admin/layouts/{layout_id}", summary="Delete a page layout")
+def delete_page_layout(layout_id: int, current_user: User = Depends(get_current_user)):
+    session = get_session()
+    try:
+        layout = session.query(PageLayout).filter(PageLayout.id == layout_id, PageLayout.user_id == current_user.id).first()
+        if not layout:
+            raise HTTPException(404, "Layout not found")
+        session.delete(layout)
         session.commit()
         return {"success": True}
     finally:

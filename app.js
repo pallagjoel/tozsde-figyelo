@@ -1560,6 +1560,7 @@ const p3State = {
   customObjects: [],
   activeFields: [],
   currentRecords: [],
+  activeLayouts: [],
 };
 
 // Fetch Custom Objects on load
@@ -1596,7 +1597,7 @@ async function loadCustomObjectsNav() {
         document.getElementById('recordsPageSubtitle').textContent = `Full database view of all tracked ${item.dataset.objectLabel}`;
         
         p3State.recordsOffset = 0;
-        showPage('records');
+        setActivePage('records');
         loadRecordsPage();
       });
     });
@@ -1614,7 +1615,7 @@ async function loadCustomObjectsNav() {
         document.getElementById('recordsPageSubtitle').textContent = `Full database view of all tracked equities and computed metrics`;
         
         p3State.recordsOffset = 0;
-        showPage('records');
+        setActivePage('records');
         loadRecordsPage();
       });
     }
@@ -1636,6 +1637,13 @@ async function loadRecordsPage() {
     if (!fieldsRes.ok) throw new Error('Failed to fetch field definitions');
     const fieldsData = await fieldsRes.json();
     p3State.activeFields = (fieldsData.fields || []).filter(f => f.is_active);
+    
+    // 1b. Fetch Layouts for current object
+    const layoutsRes = await authFetch(`${API_BASE}/api/admin/layouts?object_id=${p3State.currentObjectId}`);
+    if (layoutsRes.ok) {
+        const layoutsData = await layoutsRes.json();
+        p3State.activeLayouts = (layoutsData.layouts || []).filter(l => l.is_active);
+    }
     
     // 2. Fetch Records
     const search = p3.recordSearch?.value || '';
@@ -1815,19 +1823,58 @@ window.openRecordModal = function(index) {
   if (!r) return;
   
   if (p3State.currentObjectId === -1) {
-    // Route stocks back to the beautiful custom modal
-    openStockModal(r.ticker);
-    return;
+    // Route stocks back to the beautiful custom modal (or layout if we wanted to later)
+    // Actually user requested layout editor for standard stock pages too, so we'll route it to layout.
+    // wait, if we want stock pages to use the layout builder, we should do it here!
   }
   
   const title = p3State.currentObjectId === -1 ? (r.name || r.ticker) : (r.data?.name || `Record #${r.id}`);
   const subtitle = p3State.currentObjectId === -1 ? r.ticker : p3State.currentObjectName;
   
-  document.getElementById('rdTitle').textContent = title;
-  document.getElementById('rdSubtitle').textContent = subtitle;
+  document.getElementById('recordDetailPageTitle').textContent = title;
+  document.getElementById('recordDetailPageSubtitle').textContent = subtitle;
   
-  let html = '';
-  p3State.activeFields.forEach(cf => {
+  const canvas = document.getElementById('recordDetailCanvas');
+  const layout = p3State.activeLayouts && p3State.activeLayouts.length > 0 ? p3State.activeLayouts[0] : null;
+  
+  if (layout && layout.layout_data && layout.layout_data.sections) {
+    let html = '';
+    layout.layout_data.sections.forEach(sec => {
+        html += `<div style="display:grid; grid-template-columns: repeat(${sec.columns}, 1fr); gap:16px; margin-bottom: 24px;">`;
+        sec.items.forEach(item => {
+            const cf = p3State.activeFields.find(f => f.name === item.name);
+            if (!cf) return;
+            const displayVal = formatFieldValue(cf, r);
+            html += `
+              <div class="glass-card" style="padding:16px;">
+                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">${escapeHtml(cf.label || cf.name)}</div>
+                <div style="font-size:1.1rem; font-weight:600;">${displayVal}</div>
+              </div>
+            `;
+        });
+        html += `</div>`;
+    });
+    canvas.innerHTML = html;
+  } else {
+    // Fallback Grid
+    let html = '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:16px;">';
+    p3State.activeFields.forEach(cf => {
+      const displayVal = formatFieldValue(cf, r);
+      html += `
+        <div class="glass-card" style="padding:16px;">
+          <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">${escapeHtml(cf.label || cf.name)}</div>
+          <div style="font-size:1.1rem; font-weight:600;">${displayVal}</div>
+        </div>
+      `;
+    });
+    html += '</div>';
+    canvas.innerHTML = html;
+  }
+  
+  setActivePage('record-detail');
+};
+
+function formatFieldValue(cf, r) {
     let val;
     if (p3State.currentObjectId === -1) {
       if (!cf.is_standard) val = (r.custom_fields && r.custom_fields[cf.name] !== undefined) ? r.custom_fields[cf.name] : null;
@@ -1843,18 +1890,12 @@ window.openRecordModal = function(index) {
       else if (cf.field_type === 'number') displayVal = typeof val === 'number' ? val.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : val;
       else displayVal = val;
     }
-    
-    html += `
-      <div style="background:var(--bg-secondary); padding:12px; border-radius:8px; border:1px solid var(--border);">
-        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">${cf.label || cf.name}</div>
-        <div style="font-size:1rem; font-weight:600;">${displayVal}</div>
-      </div>
-    `;
-  });
-  
-  document.getElementById('rdFieldsGrid').innerHTML = html;
-  recordDetailModal.style.display = 'flex';
-};
+    return displayVal;
+}
+
+document.getElementById('backToRecordsBtn')?.addEventListener('click', () => {
+    setActivePage('records');
+});
 
 // ── Custom Record Editor Logic ──
 const newRecordBtn = document.getElementById('newRecordBtn');

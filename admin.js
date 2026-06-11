@@ -95,6 +95,10 @@ function renderObjectsList() {
       selectedObjectId = parseInt(item.getAttribute('data-id'), 10);
       renderObjectsList(); // Update active state
       updateDetailPanelHeader();
+      
+      // Reset to Fields tab
+      document.getElementById('pill-fields').click();
+      
       loadFieldsForSelected();
     });
   });
@@ -532,6 +536,236 @@ function setupEventListeners() {
       document.getElementById('formulaName').value = val;
     }
   });
+
+  // ── Layout Tabs ──
+  document.getElementById('pill-fields').addEventListener('click', () => {
+    document.getElementById('pill-fields').classList.add('active');
+    document.getElementById('pill-fields').style.background = 'var(--primary)';
+    document.getElementById('pill-fields').style.color = 'white';
+    document.getElementById('pill-fields').style.border = 'none';
+
+    document.getElementById('pill-layouts').classList.remove('active');
+    document.getElementById('pill-layouts').style.background = 'transparent';
+    document.getElementById('pill-layouts').style.color = 'var(--text)';
+    document.getElementById('pill-layouts').style.border = '1px solid var(--border)';
+
+    document.getElementById('view-fields').style.display = 'block';
+    document.getElementById('view-layouts').style.display = 'none';
+  });
+
+  document.getElementById('pill-layouts').addEventListener('click', () => {
+    document.getElementById('pill-layouts').classList.add('active');
+    document.getElementById('pill-layouts').style.background = 'var(--primary)';
+    document.getElementById('pill-layouts').style.color = 'white';
+    document.getElementById('pill-layouts').style.border = 'none';
+
+    document.getElementById('pill-fields').classList.remove('active');
+    document.getElementById('pill-fields').style.background = 'transparent';
+    document.getElementById('pill-fields').style.color = 'var(--text)';
+    document.getElementById('pill-fields').style.border = '1px solid var(--border)';
+
+    document.getElementById('view-fields').style.display = 'none';
+    document.getElementById('view-layouts').style.display = 'block';
+    
+    loadLayoutsForSelected();
+  });
+  
+  // Layout Builder Modals
+  document.getElementById('openNewLayoutBtn').addEventListener('click', openLayoutBuilder);
+  document.getElementById('closeLayoutEditorBtn').addEventListener('click', closeLayoutBuilder);
+  document.getElementById('cancelLayoutEditorBtn').addEventListener('click', closeLayoutBuilder);
+  document.getElementById('addLayoutSectionBtn').addEventListener('click', addLayoutSection);
+  document.getElementById('saveLayoutBtn').addEventListener('click', saveLayout);
+}
+
+// ── Page Layouts Logic ──
+
+let currentLayouts = [];
+let editingLayoutId = null;
+let layoutSections = []; // array of { id, columns: 1 or 2, items: [] }
+
+async function loadLayoutsForSelected() {
+  try {
+    const container = document.getElementById("layoutsContainer");
+    container.innerHTML = `<div style="text-align:center; padding:20px;">Loading layouts...</div>`;
+    
+    const res = await adminApi(`/api/admin/layouts?object_id=${selectedObjectId}`);
+    const data = await res.json();
+    currentLayouts = data.layouts || [];
+    
+    if (currentLayouts.length === 0) {
+      container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);">No layouts configured. System will use default grid.</div>`;
+      return;
+    }
+    
+    container.innerHTML = currentLayouts.map(l => `
+      <div class="stat-card" style="flex-direction:row; justify-content:space-between; align-items:center; padding:16px;">
+        <div>
+          <div style="font-weight:600;">${escapeHtml(l.name)}</div>
+          <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">
+            ${l.is_active ? '<span class="z-badge safe">Active</span>' : '<span class="z-badge distress">Inactive</span>'}
+          </div>
+        </div>
+        <div>
+          <button class="btn btn-secondary btn-sm" onclick="editLayout(${l.id})"><i class="fas fa-edit"></i> Edit</button>
+          <button class="btn btn-secondary btn-sm" onclick="deleteLayout(${l.id})" style="color:var(--accent-danger);"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+    `).join("");
+  } catch (err) {
+    showToast("Error loading layouts: " + err.message, "error");
+  }
+}
+
+function openLayoutBuilder() {
+  editingLayoutId = null;
+  document.getElementById("layoutNameInput").value = "New Layout";
+  layoutSections = [{ id: Date.now(), columns: 2, items: [] }]; // default one section
+  
+  populateLayoutPalette();
+  renderLayoutCanvas();
+  document.getElementById("layoutEditorModal").style.display = "flex";
+}
+
+window.editLayout = function(id) {
+  const layout = currentLayouts.find(l => l.id === id);
+  if (!layout) return;
+  editingLayoutId = id;
+  document.getElementById("layoutNameInput").value = layout.name;
+  layoutSections = layout.layout_data.sections || [];
+  
+  populateLayoutPalette();
+  renderLayoutCanvas();
+  document.getElementById("layoutEditorModal").style.display = "flex";
+};
+
+window.deleteLayout = async function(id) {
+  if (!confirm("Delete this layout?")) return;
+  try {
+    await adminApi(`/api/admin/layouts/${id}`, { method: "DELETE" });
+    showToast("Layout deleted", "success");
+    loadLayoutsForSelected();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+};
+
+function closeLayoutBuilder() {
+  document.getElementById("layoutEditorModal").style.display = "none";
+}
+
+function populateLayoutPalette() {
+  const palette = document.getElementById("layoutFieldPalette");
+  
+  // Create a list of available fields. For Stock (-1) we have some built-ins too.
+  let fields = [...customFields];
+  if (selectedObjectId === -1) {
+    fields.unshift({name: "ticker", label: "Ticker", field_type: "text"});
+    fields.unshift({name: "name", label: "Company Name", field_type: "text"});
+    fields.unshift({name: "price", label: "Price", field_type: "currency"});
+    fields.unshift({name: "market_cap", label: "Market Cap", field_type: "currency"});
+  }
+  
+  palette.innerHTML = fields.map(f => `
+    <div class="palette-item" draggable="true" ondragstart="layoutDragStart(event, 'field', '${f.name}')" 
+         style="background:var(--bg-body); padding:8px 12px; border-radius:4px; border:1px dashed var(--border); font-size:0.85rem; cursor:grab;">
+      <i class="fas fa-align-left" style="color:var(--text-muted); margin-right:6px;"></i> ${escapeHtml(f.label)} <small style="color:var(--text-muted);">(${f.name})</small>
+    </div>
+  `).join("");
+}
+
+function addLayoutSection() {
+  layoutSections.push({ id: Date.now(), columns: 2, items: [] });
+  renderLayoutCanvas();
+}
+
+window.removeLayoutSection = function(id) {
+  layoutSections = layoutSections.filter(s => s.id !== id);
+  renderLayoutCanvas();
+};
+
+window.removeLayoutItem = function(sectionId, index) {
+  const sec = layoutSections.find(s => s.id === sectionId);
+  if (sec) {
+    sec.items.splice(index, 1);
+    renderLayoutCanvas();
+  }
+};
+
+function renderLayoutCanvas() {
+  const canvas = document.getElementById("layoutCanvas");
+  canvas.innerHTML = layoutSections.map(sec => `
+    <div class="layout-section" style="border:1px solid var(--border); border-radius:6px; background:var(--bg-card); padding:16px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+        <h5 style="margin:0; color:var(--text-muted);">Section (${sec.columns} Columns)</h5>
+        <div>
+          <button class="btn btn-secondary btn-sm" onclick="removeLayoutSection(${sec.id})" style="padding:2px 6px; font-size:0.7rem; color:var(--accent-danger);"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+      
+      <div class="layout-dropzone" ondragover="layoutDragOver(event)" ondrop="layoutDrop(event, ${sec.id})"
+           style="min-height:60px; border:1px dashed var(--border); border-radius:4px; padding:8px; display:grid; grid-template-columns: repeat(${sec.columns}, 1fr); gap:8px;">
+        ${sec.items.length === 0 ? '<div style="grid-column: 1 / -1; text-align:center; color:var(--text-muted); font-size:0.8rem; padding:16px;">Drag fields here...</div>' : ''}
+        ${sec.items.map((item, idx) => `
+          <div style="background:var(--bg-body); padding:8px; border-radius:4px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+             <span style="font-size:0.85rem;">${escapeHtml(item.name)}</span>
+             <i class="fas fa-times" style="cursor:pointer; color:var(--accent-danger);" onclick="removeLayoutItem(${sec.id}, ${idx})"></i>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `).join("");
+}
+
+// Drag and Drop State
+let dragPayload = null;
+window.layoutDragStart = function(e, type, name) {
+  dragPayload = { type, name };
+};
+window.layoutDragOver = function(e) {
+  e.preventDefault(); // allow drop
+};
+window.layoutDrop = function(e, sectionId) {
+  e.preventDefault();
+  if (!dragPayload) return;
+  const sec = layoutSections.find(s => s.id === sectionId);
+  if (sec) {
+    // Only add if not already in this section
+    if (!sec.items.find(i => i.name === dragPayload.name)) {
+       sec.items.push({ type: dragPayload.type, name: dragPayload.name });
+       renderLayoutCanvas();
+    }
+  }
+  dragPayload = null;
+};
+
+async function saveLayout() {
+  const name = document.getElementById("layoutNameInput").value.trim();
+  if (!name) return showToast("Layout name is required", "error");
+  
+  const payload = {
+    object_id: selectedObjectId,
+    name: name,
+    layout_data: { sections: layoutSections },
+    is_active: true
+  };
+  
+  const url = editingLayoutId ? `/api/admin/layouts/${editingLayoutId}` : `/api/admin/layouts`;
+  const method = editingLayoutId ? "PUT" : "POST";
+  
+  try {
+    const res = await adminApi(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error("Failed to save layout");
+    showToast("Layout saved", "success");
+    closeLayoutBuilder();
+    loadLayoutsForSelected();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

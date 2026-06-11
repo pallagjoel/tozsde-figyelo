@@ -79,22 +79,40 @@
             <button class="btn btn-secondary btn-sm" id="openNewFieldBtn"><i class="fas fa-plus"></i> New Field</button>
           </div>
           
-          <div class="table-responsive">
-            <table class="valuation-table" style="width:100%;">
-              <thead>
-                <tr>
-                  <th>API Name</th>
-                  <th>Label</th>
-                  <th>Type</th>
-                  <th>Formula/Lookup</th>
-                  <th>Status</th>
-                  <th style="text-align:right;">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="customFieldsTableBody">
-                <tr><td colspan="6" style="text-align:center; padding:20px;">Select an object to load fields...</td></tr>
-              </tbody>
-            </table>
+          <!-- Object Detail Tabs -->
+          <div class="pill-nav" style="margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+            <button class="pill active" id="pill-fields" style="background:var(--primary); color:white; border:none; padding:6px 12px; border-radius:4px; font-weight:600; cursor:pointer;">Fields & Relationships</button>
+            <button class="pill" id="pill-layouts" style="background:transparent; color:var(--text); border:1px solid var(--border); padding:6px 12px; border-radius:4px; font-weight:600; cursor:pointer; margin-left:8px;">Page Layouts</button>
+          </div>
+          
+          <div id="view-fields">
+            <div class="table-responsive">
+              <table class="valuation-table" style="width:100%;">
+                <thead>
+                  <tr>
+                    <th>API Name</th>
+                    <th>Label</th>
+                    <th>Type</th>
+                    <th>Formula/Lookup</th>
+                    <th>Status</th>
+                    <th style="text-align:right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="customFieldsTableBody">
+                  <tr><td colspan="6" style="text-align:center; padding:20px;">Select an object to load fields...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <div id="view-layouts" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+                <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">Manage dynamic page layouts for this object.</p>
+                <button class="btn btn-primary btn-sm" id="openNewLayoutBtn"><i class="fas fa-plus"></i> New Layout</button>
+            </div>
+            <div id="layoutsContainer" style="display:flex; flex-direction:column; gap:12px;">
+                <!-- Layouts rendered here -->
+            </div>
           </div>
         </div>
       </div>
@@ -423,6 +441,49 @@
       </div>
 
       <button class="btn btn-primary" id="saveProviderBtn" style="width:100%; justify-content:center;">Save Provider</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Page Layout Editor Modal ── -->
+<div class="modal-overlay" id="layoutEditorModal" style="display:none; z-index:10000;">
+  <div class="modal" style="max-width:1000px; width:95%;">
+    <div class="modal-header">
+      <div class="modal-title" id="layoutEditorTitle">Page Layout Builder</div>
+      <button class="modal-close" id="closeLayoutEditorBtn"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" style="display:grid; grid-template-columns: 250px 1fr; gap:20px; height:65vh; padding:0;">
+      
+      <!-- Left Sidebar: Palette -->
+      <div style="border-right: 1px solid var(--border); padding:16px; overflow-y:auto; background:var(--bg-card);">
+        <div class="input-wrapper" style="margin-bottom:16px;">
+            <label style="font-size:0.8rem; font-weight:600; color:var(--text-muted);">Layout Name</label>
+            <input type="text" class="stock-input" id="layoutNameInput" placeholder="e.g. Standard Layout">
+        </div>
+        
+        <hr style="border:0; border-top:1px solid var(--border); margin:16px 0;">
+        <div style="font-weight:600; font-size:0.8rem; margin-bottom:8px; color:var(--text-muted); text-transform:uppercase;">Palette</div>
+        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:12px;">Drag items from here to the canvas sections.</p>
+        
+        <div id="layoutFieldPalette" style="display:flex; flex-direction:column; gap:8px; min-height: 200px;">
+            <!-- Draggable Fields rendered via JS -->
+        </div>
+      </div>
+      
+      <!-- Right: Canvas -->
+      <div style="padding: 16px; overflow-y:auto; background:var(--bg-body);">
+         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+             <h4 style="margin:0; font-size:1.1rem;">Canvas</h4>
+             <button class="btn btn-secondary btn-sm" id="addLayoutSectionBtn"><i class="fas fa-plus"></i> Add Section</button>
+         </div>
+         <div id="layoutCanvas" style="display:flex; flex-direction:column; gap:16px; min-height: 300px;">
+             <!-- Sections rendered via JS -->
+         </div>
+      </div>
+    </div>
+    <div style="padding: 16px; border-top: 1px solid var(--border); display:flex; justify-content:flex-end; gap:12px;">
+        <button class="btn btn-secondary" id="cancelLayoutEditorBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveLayoutBtn"><i class="fas fa-save"></i> Save Layout</button>
     </div>
   </div>
 </div>

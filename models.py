@@ -438,6 +438,7 @@ class CustomObject(Base):
     
     fields: Mapped[List["CustomField"]] = relationship("CustomField", back_populates="custom_object", cascade="all, delete-orphan")
     records: Mapped[List["CustomRecord"]] = relationship("CustomRecord", back_populates="custom_object", cascade="all, delete-orphan")
+    layouts: Mapped[List["PageLayout"]] = relationship("PageLayout", back_populates="custom_object", cascade="all, delete-orphan")
 
     def to_dict(self) -> dict:
         return {
@@ -514,6 +515,30 @@ class CustomRecord(Base):
             "id": self.id, "user_id": self.user_id, "object_id": self.object_id, "name": self.name,
             "data": self.data, "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat()
+        }
+
+class PageLayout(Base):
+    """
+    Dynamic page layout configuration for an object.
+    If object_id is null, it represents a layout for the built-in 'Stock' object.
+    """
+    __tablename__ = "page_layouts"
+
+    id:              Mapped[int]           = mapped_column(primary_key=True, autoincrement=True)
+    user_id:         Mapped[int]           = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    object_id:       Mapped[Optional[int]] = mapped_column(ForeignKey("custom_objects.id", ondelete="CASCADE"))
+    name:            Mapped[str]           = mapped_column(String(100), nullable=False)
+    is_active:       Mapped[bool]          = mapped_column(Boolean, default=True)
+    layout_data:     Mapped[dict]          = mapped_column(JSON, default=dict)
+    created_at:      Mapped[datetime]      = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    custom_object: Mapped[Optional["CustomObject"]] = relationship("CustomObject", back_populates="layouts")
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id, "user_id": self.user_id, "object_id": self.object_id,
+            "name": self.name, "is_active": self.is_active,
+            "layout_data": self.layout_data, "created_at": self.created_at.isoformat()
         }
 
 # ══════════════════════════════════════════════════════════════════════════════
