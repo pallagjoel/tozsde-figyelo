@@ -1,0 +1,163 @@
+# Tőzsde Figyelő - Master Test Scenarios Document
+
+Ez a dokumentum tartalmazza a "Tőzsde Figyelő - Financial OS" rendszer funkcióira vonatkozó Smoke (Füst), Functional (Funkcionális) és Regression (Regressziós) teszt forgatókönyveket.
+
+---
+
+## 1. Core Valuation Engine (DCF, CAPM, WACC, Altman Z)
+**Smoke Teszt:**
+- A háttérfolyamat hibamentesen lefut-e 1 db ismert teszt részvénnyel (pl. AAPL) anélkül, hogy a Python script összeomlana.
+- Ellenőrizni, hogy az adatbázisban a Valuation táblába bekerül-e az új rekord.
+
+**Funkcionális Teszt:**
+- DCF Számítás validációja: Kézzel kiszámolt DCF érték összevetése a rendszer által generált értékkel. Pozitív és negatív FCF bemenetek ellenőrzése.
+- Altman Z-Score határérték tesztelés: Szándékosan torzított mérleg adatok betöltése, és a Z-Score "DISTRESS", "GREY", "SAFE" zónák megfelelő billenésének ellenőrzése.
+- Value Trap override tesztelése: Kiváló (olcsó) DCF ár beállítása, de kritikus Z-Score megadása. A rendszernek a vételi jelzést felül kell írnia "VALUE_TRAP"-re.
+
+**Regressziós Teszt:**
+- Biztosítani, hogy az egyedi paraméterek (pl. WACC adjustment vagy új szektor-specifikus formulák) bevezetése után a régebbi, standard értékelések pontosan ugyanazt a kimenetet adják, mint korábban.
+
+---
+
+## 2. Data Pipelines & Database (FMP, YFinance, FRED, SQLite)
+**Smoke Teszt:**
+- Külső API hívások tesztelése (egy-egy végpont meghívása FMP, YFinance és AlphaVantage esetében), 200 OK HTTP státusz ellenőrzése.
+- Adatbázis WAL mód aktív-e (concurrent írás/olvasás futtatása egy másodpercben).
+
+**Funkcionális Teszt:**
+- Adathiány (Missing Data) kezelése: Ha a YFinance nem ad vissza negyedéves mérleget, a rendszer sikeresen fallbackel-e FMP-re vagy más forrásra?
+- FRED Macro Rate betöltése: Helyesen frissül-e a 10 éves államkötvény hozam és S&P 500 átlaghozam a makro táblában.
+
+**Regressziós Teszt:**
+- Régi mentett részvényadatok frissítése az új API modulokkal: az adatok nem sérülhetnek és nem duplikálódhatnak (Unique Constraint tesztelés a company_id és date pároson).
+
+---
+
+## 3. Dynamic PaaS (Schema-Driven UI & Custom Objects)
+**Smoke Teszt:**
+- Új CustomObject (pl. "Ingatlan Portfolió") létrehozásakor lefut-e a schema generálás és a frontend hiba nélkül rendereli-e az új menüpontot.
+
+**Funkcionális Teszt:**
+- Custom Field hozzáadása: Boolean, Number, Percent és Lookup típusú mezők hozzáadása egy egyedi objektumhoz. Sikeres JSON payload validáció a backend oldalon.
+- CRUD műveletek: Új dinamikus rekord létrehozása, szerkesztése, majd törlése a dinamikus UI felületen keresztül. Az adatok helyesen JSON mezőbe kerülnek-e a CustomRecord táblában.
+
+**Regressziós Teszt:**
+- A beépített, natív "Stock" és "Company" nézetek zavartalanul működnek-e a Custom Object architektúra engedélyezése után is.
+
+---
+
+## 4. Advanced Math Formula Engine & Visual Builder
+**Smoke Teszt:**
+- Beépített matematikai formulák (pl. rf + beta * erp) sikeres Evaluálása az AST / Eval motoron keresztül, szintaktikai hiba nélkül.
+
+**Funkcionális Teszt:**
+- Biztonsági (Sandbox) tesztek: Code injection kísérletek (pl. __import__('os').system('rm -rf /')) futtatása a formula builder-ben. A rendszernek blokkolnia kell minden nem-matematikai hívást.
+- Komplex változók: Nested változók és custom fieldek hivatkozásainak helyes kiértékelése egy Node-alapú gráfban.
+
+**Regressziós Teszt:**
+- Miután a felhasználó megváltoztatja a globális WACC formulát, a napi valuation engine run képes-e lefutni és az új formulával számolni a régi helyett, de az adatbázisban a régi futások adatai intaktak maradnak.
+
+---
+
+## 5. Scenario & Strategy Sandboxes
+**Smoke Teszt:**
+- Váltás a "Base" és a "Bear" scenario között a UI-on, az oldal frissülése összeomlás nélkül.
+
+**Funkcionális Teszt:**
+- Scenario Sweep: Annak ellenőrzése, hogy ha a Bear scenario-ban az ERP-t megemeljük, akkor a rendszer a kiválasztott részvényeknél az összes Value/DCF árat a helyes mértékben csökkenti-e.
+
+**Regressziós Teszt:**
+- Egy korábban törölt scenario ne okozzon Null Reference Exception-t a portfolió kimutatásokban.
+
+---
+
+## 6. Alternative Data & LLM Parsing
+**Smoke Teszt:**
+- Kapcsolat ellenőrzése a lokális (vagy API alapú) LLM modellel. Egy "Hello" prompt beküldése és a válasz fogadása.
+
+**Funkcionális Teszt:**
+- 10-K dokumentum feldolgozása: Egy ismert, pozitív nyelvezetű SEC dokumentum és egy ismert, negatív nyelvezetű dokumentum beküldése. A Sentiment Score-nak szignifikáns eltérést kell mutatnia (-1 és 1 közötti skálán).
+- Határérték tesztelés: Túl hosszú PDF dokumentumok (token limit túllépés) helyes kezelése és chunkolása (feldarabolása).
+
+**Regressziós Teszt:**
+- A meglévő kvantitatív (számszerű) értékelési engine nem fagyhat le, ha az LLM szolgáltatás ideiglenesen elérhetetlen (timeout kezelés).
+
+---
+
+## 7. Machine Learning Overlays (Predictive Analytics)
+**Smoke Teszt:**
+- A betanított XGBoost és LSTM modellek memóriába töltése és egy dummy adatpont predict() meghívása hiba nélkül.
+
+**Funkcionális Teszt:**
+- Probabilisztikus kimenetek validálása: A modell által adott esélyeknek (pl. earnings beat) 0% és 100% (0.0 - 1.0) között kell lenniük.
+- Backtesting accuracy ellenőrzés: A modell múltbéli adatokon való visszatesztelése megadott konfidencia intervallumon belül (pl. legalább 55% accuracy) teljesít.
+
+**Regressziós Teszt:**
+- Új modell verzió bevezetésekor a frontend API végpontok ugyanolyan szerkezetű JSON választ kapjanak, mint a régi modell esetén.
+
+---
+
+## 8. Turing-Complete Scripting (Pyodide / Sandbox)
+**Smoke Teszt:**
+- Egyszerű Python kód (`print("Hello Quant")`) beküldése a böngészős vagy backend sandboxba, a kimenet helyes fogadása.
+
+**Funkcionális Teszt:**
+- Időtúllépés (Timeout) tesztelés: Végtelen ciklus (`while True: pass`) beküldése. A sandboxnak beállított idő után (pl. 2 másodperc) "Time Limit Exceeded" hibával meg kell szakítania a futást.
+- Memória limit tesztelés: Nagyméretű array-ek iterálása a memórialimit túllépésig, a rendszer helyes megszakításának tesztelése.
+- Objektum hozzáférés: A custom script hozzá kell férjen a "Company" API wrapper objektumhoz, de nem érheti el a rendszer belső adatbázis hálózati kapcsolatait.
+
+**Regressziós Teszt:**
+- Régebbi Python szintaxissal írt stratégiák (pl. régi AST eval formátum) lefutnak-e az új Pyodide rendszerben is.
+
+---
+
+## 9. Graph Database (Supply Chain Mapping)
+**Smoke Teszt:**
+- Neo4j / SQLite Edge tábla lekérdezése: "Ki az Apple beszállítója?" - a rendszer összeomlás nélkül ad vissza listát.
+
+**Funkcionális Teszt:**
+- Tranzitív kapcsolatok feltérképezése: C -> B -> A kapcsolat. Ha a C cég "Disrupted" státuszba kerül, az algoritmus automatikusan flageli az "A" céget is.
+- Körkörös hivatkozások (Circular dependency): A cég beszállítója B, B beszállítója A. A gráfnak nem szabad végtelen ciklusba fagynia a rekurzív kereséskor.
+
+**Regressziós Teszt:**
+- A Graph Node-ok frissítésekor (egy cég nevet vált, vagy törlődik a fő adatbázisból) a relációk is kaszkádolva frissüljenek vagy törlődjenek (Orphan nodes elkerülése).
+
+---
+
+## 10. Backtesting Engine
+**Smoke Teszt:**
+- Egy alapértelmezett, egyszerű stratégia (pl. Buy & Hold S&P 500) visszatesztelése 1 éves perióduson, a "Done" státusz elérése.
+
+**Funkcionális Teszt:**
+- Költség és Slippage számítás: Ellenőrizni, hogy a tranzakciós költségek (komisszió) és a csúszás (slippage) valóban levonódik-e az equity görbéből minden kötésnél.
+- Osztalékok kezelése: A visszatesztelés alatt a részvények által fizetett osztalék (Total Return) helyesen jóváírásra kerül-e a virtuális egyenlegen.
+
+**Regressziós Teszt:**
+- Azonos paraméterek és stratégia kétszeri futtatása milliméterre pontosan ugyanazt a Sharpe Ratio, Max Drawdown és Total Return kimenetet kell adja (Determinisztikus eredmények).
+
+---
+
+## 11. IBKR Live Execution & Event-Driven Manager
+**Smoke Teszt:**
+- Csatlakozás az "IB Gateway" Headless klienshez API kulcsokkal, és a fiók egyenlegének (Account Balance) sikeres lekérése read-only módban.
+
+**Funkcionális Teszt:**
+- Signal Routing (Paper Trading): "LIVE" gomb KIKAPCSOLVA. Egy vételi jel generálódik. A Portfolio Manager elkapja a jelet, és beírja a lokális adatbázisba anélkül, hogy hálózati kérést küldene az IBKR felé.
+- Signal Routing (Live Trading): "LIVE" gomb BEKAPCSOLVA. Rendszer teszt-vásárlás (pl. 1 db penny stock Market Order), és a sikeres Fill Event Websocketen keresztüli visszaigazolása a Frontend felé.
+
+**Regressziós Teszt:**
+- A hálózati kapcsolat megszakadása az IBKR Gateway-el. Az Event Managernek automatikusan le kell állítania az Order Execution-t (Fail-safe mód), és újra kell próbálkoznia (Reconnection logic).
+
+---
+
+## 12. Institutional Risk Management (The Kill Switch)
+**Smoke Teszt:**
+- Az adminisztrátori felületen egy fix hard-limit megváltoztatása és elmentése.
+
+**Funkcionális Teszt:**
+- Max Drawdown Limit (Napi veszteség limit): Egy papír-kereskedési portfolió szándékos bukásba vezetése. Amikor eléri a -X% napi limitet, a rendszernek blokkolnia kell minden további Buy Order-t, függetlenül az egyedi Python script utasításától.
+- Position Sizing Cap (Maximális pozíció méret): Egy stratégia megpróbálja a portfolió 99%-át beletenni egyetlen részvénybe. A Kill Switch-nek el kell kapnia az Order-t, és "REJECTED - ALLOCATION LIMIT EXCEEDED" üzenettel el kell dobnia.
+- Rate Limiting (Spam szűrés): Másodpercenként 100 order beküldése. A rendszernek be kell dobnia a Rate Limit Exceptiont, és le kell állítania az adott stratégiát, hogy az IBKR ne tiltsa le az API kulcsot.
+
+**Regressziós Teszt:**
+- Minden új stratégiai paraméter vagy UI gomb bevezetése után ellenőrizni kell, hogy a Kill Switch logika továbbra is a pipeline legalsó, kikerülhetetlen (override-olhatatlan) rétegében fut-e.

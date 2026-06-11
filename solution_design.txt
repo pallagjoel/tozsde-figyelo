@@ -1,0 +1,110 @@
+# Tőzsde Figyelő: The Financial Operating System
+## Master Solution Design Document (SDD)
+
+### Vision Statement
+Tőzsde Figyelő is transitioning from a standalone valuation tool into a Platform as a Service (PaaS) for Quants. It will occupy the highly lucrative "Missing Middle" between rigid retail applications (TradingView, Simply Wall St) and $25,000/year institutional monoliths (Bloomberg, Capital IQ). By achieving 110% of Capital IQ's analytical power through Alternative Data and LLMs, and offering seamless IBKR automated execution, it will become the ultimate "Hedge Fund in a Box" for boutique firms and advanced retail investors.
+
+---
+
+## 1. Executive Summary
+This document outlines the current state and the multi-phase target architecture for Tőzsde Figyelő. The system will evolve to support schema-driven dynamic UIs, Turing-complete browser scripting, graph-database supply chain tracking, probabilistic machine learning overlays, and institutional-grade algorithmic trading.
+
+---
+
+## 2. Current State Architecture
+
+The platform has established a robust, local-first foundation built on Python (FastAPI/SQLAlchemy) and SQLite. It already incorporates the beginnings of a dynamic object model.
+
+### 2.1. Core Valuation Engine
+Currently, the valuation engine operates exclusively against the local SQLite database to prevent API rate limits, executing nightly sweeps.
+- CAPM & WACC: Calculates Expected Return and Weighted Average Cost of Capital using dynamic macro-rates (e.g., 10Y Treasury).
+- DCF (2-Stage, 10-Year): Projects Free Cash Flows based on historical CAGRs, capped/floored by sector-specific configurations, applying a Gordon Growth Terminal Value.
+- Altman Z-Score: Evaluates bankruptcy risk (Z = c1X1 + ... + c5X5) to assign SAFE, GREY, or DISTRESS zones.
+- Value Trap Protection: Overrides "Cheap" (high Margin of Safety) signals if the Z-Score indicates distress, revenue declines by >50%, or FCF is consistently negative.
+
+### 2.2. Database Architecture & Data Pipelines
+The system utilizes a Master-Detail relational hierarchy on SQLite (WAL mode).
+- Entities: Company (Master) -> QuarterlyFinancials, DailyPrice, Valuation (Details).
+- ETL Pipelines: Asynchronous fetchers for Yahoo Finance, Alpha Vantage, Financial Modeling Prep (FMP), and FRED (Macro Rates).
+
+### 2.3. Proto-Dynamic Infrastructure
+The architecture in models.py already contains the seeds for the PaaS vision:
+- CustomObject, CustomField, CustomRecord: Allows users to define arbitrary database tables and relationships.
+- MathFormula: Stores equations as strings (e.g., rf + beta * erp) evaluated securely at runtime.
+
+---
+
+## 3. Phase 1: The Quant PaaS (Platform as a Service)
+
+To transition control from the backend developers to the end-user, the UI and Math layers must be completely abstracted.
+
+### 3.1. Schema-Driven UI Generation
+Instead of hardcoding HTML pages for specific objects, the frontend will render purely based on JSON schemas sent by the backend.
+- Backend Protocol: When the user requests a page, FastAPI returns a schema definition containing fields and types.
+- Frontend Engine: A JavaScript framework dynamically renders the tables, forms, and tabs based strictly on this JSON.
+- Result: The user can create a "Crypto Wallet" object, add fields, and the UI will generate the CRUD interface instantly.
+
+### 3.2. Advanced Math Formula Engine & Visual Builder
+- Abstract Syntax Trees (AST): For multi-step algorithms, we will implement a safe AST evaluator or embed a sandboxed scripting language.
+- Visual Node Builder: Inspired by Unreal Engine Blueprints. Users drag a "Revenue Node", connect it to an "Assumption Node", and pipe it into a "DCF Output Node".
+
+### 3.3. Scenario & Strategy Sandboxes
+- Database-Driven Scenarios: Scenarios (Base, Bear, Bull, Hyperinflation) will be saved as CustomRecord rows.
+- Valuation Looping: The engine loops through all active user scenarios, generating a matrix of valuations per stock.
+
+---
+
+## 4. Phase 2: Capital IQ Killer (110% Analytical Power)
+
+### 4.1. LLM Parsing & Alternative Data Ingestion
+- SEC Filings & Earnings Transcripts: An automated pipeline will download transcripts and pass them through an LLM.
+- Sentiment Scoring: The LLM will extract forward-looking statements and score them. A sudden drop in sentiment vs. the previous quarter becomes a plottable metric.
+- Alternative Data Hooks: Integrate APIs for Insider Trading, Political Trading, and Web Traffic.
+
+### 4.2. Machine Learning Overlays (Predictive Analytics)
+- XGBoost / Random Forest Models: Trained on historical data to predict the probability of an earnings surprise.
+- LSTM Networks: For short-term price action forecasting based on momentum and volume.
+- The "Crystal Ball" Module: The user inputs a ticker, and the ML engine outputs probabilities.
+
+### 4.3. Turing-Complete Financial Scripting Language
+- Implementation: Integrate Pyodide (Python in WebAssembly) in the browser, or provide a strictly sandboxed server-side Python environment.
+- Capability: Users write actual Python scripts for Leveraged Buyout (LBO) models and complex hedging.
+
+### 4.4. Graph Database for Supply Chain Mapping
+- Architecture: Implement a Graph data structure (Neo4j or mapped in SQLite).
+- Nodes & Edges: Companies, Commodities, Geographies linked by "SUPPLIES_TO" or "COMPETES_WITH".
+- Impact: Automatically flags impacted equities during macro events.
+
+---
+
+## 5. Phase 3: Automated Trading & Execution (Hedge Fund in a Box)
+
+### 5.1. Backtesting Engine
+- Data Source: Re-use the existing SQLite historical DailyPrice tables.
+- Engine: Replays the market day-by-day, applying the custom algorithm, calculating slippage, commission, and tracking equity.
+
+### 5.2. IBKR Integration Architecture
+- Connection Method: TWS API via ib_insync (Python). A headless "IB Gateway" container runs on the server, maintaining a constant WebSocket connection to IBKR.
+
+### 5.3. Event-Driven Execution Engine
+1. Signal Generator: Continuously evaluates User Scripts against streaming market data.
+2. Portfolio Manager: Evaluates the signal against current buying power. Includes a Paper Trading Toggle.
+3. Order Executioner: Takes validated signals and translates them into IBKR Contract objects.
+
+### 5.4. Institutional-Grade Risk Management (The "Kill Switch")
+These rules are hardcoded and cannot be overridden by user scripts.
+1. Max Drawdown Limits: Liquidates/halts if equity drops >X% in a single day.
+2. Position Sizing Caps: Rejects orders exceeding Y% of total portfolio value.
+3. Order Rate Limiting: Prevents API spam loops (max 10 orders per minute).
+4. Fat-Finger Protection: Hard limit on maximum order dollar value.
+
+---
+
+## 6. Infrastructure, Security, & DevOps
+
+### 6.1. Tenant Isolation
+Row-Level Security (RLS) or dedicated SQLite databases per tenant to guarantee strict isolation between users' proprietary strategies.
+
+### 6.2. WebSockets & Worker Queues
+- WebSockets: Crucial for the live trading dashboard to reflect IBKR order fills instantly.
+- Worker Queues: LLM parsing, DCF sweeps, and Backtesting offloaded to background workers (Celery/Redis).

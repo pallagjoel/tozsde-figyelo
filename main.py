@@ -14,7 +14,7 @@ if sys.stdout.encoding != 'utf-8':
 if sys.stderr.encoding != 'utf-8':
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-from fastapi import FastAPI, HTTPException, Query, Body, Depends
+from fastapi import FastAPI, HTTPException, Query, Body, Depends, BackgroundTasks
 from auth import router as auth_router, get_current_user
 from models import User
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,6 +36,7 @@ from models import (
     init_quant_db, get_session, Company, QuarterlyFinancials,
     DailyPrice, Valuation, MacroRate, DataProvider, MathFormula,
     get_or_create_company, get_latest_macro, get_latest_valuation,
+    CustomObject, CustomField, CustomRecord,
 )
 from valuation_engine import run_all_valuations, run_valuation_for_company, run_scenario_sweep
 from etl_pipeline import run_nightly_etl
@@ -70,6 +71,9 @@ async def startup():
 BASE_DIR = os.path.dirname(__file__)
 app.mount("/static", StaticFiles(directory=BASE_DIR), name="static")
 app.include_router(auth_router)
+
+import api_paas
+app.include_router(api_paas.router)
 
 @app.get("/", include_in_schema=False)
 def serve_frontend_root():
@@ -718,6 +722,25 @@ def trigger_scenario_sweep(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Scenario sweep error: {str(e)}")
+
+def async_scenario_task(scenario_names: list):
+    import time
+    print(f"Async Scenario Sweep Started for {scenario_names}...")
+    run_scenario_sweep(scenario_names)
+    print("Async Scenario Sweep Completed successfully!")
+
+@app.post("/api/valuations/scenarios/async", summary="Async Bear/Base/Bull scenario sweep")
+def trigger_async_scenario_sweep(
+    background_tasks: BackgroundTasks,
+    scenarios: Optional[str] = Query(None, description="Comma-separated scenario names (e.g. bear,base,bull)"),
+    current_user: User = Depends(get_current_user)):
+    scenario_list = [s.strip().lower() for s in scenarios.split(",") if s.strip()] if scenarios else None
+    background_tasks.add_task(async_scenario_task, scenario_list)
+    return {
+        "status": "Accepted",
+        "message": "Scenario sweep started in the background.",
+        "scenarios": scenario_list
+    }
 
 
 # ── Config API (Phase 2: Mathematical Transparency) ──────────────────────────

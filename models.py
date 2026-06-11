@@ -435,6 +435,9 @@ class CustomObject(Base):
     plural_label:    Mapped[str]           = mapped_column(String(100), nullable=False)               # UI label e.g. "Portfolios"
     description:     Mapped[Optional[str]] = mapped_column(Text)
     created_at:      Mapped[datetime]      = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    fields: Mapped[List["CustomField"]] = relationship("CustomField", back_populates="custom_object", cascade="all, delete-orphan")
+    records: Mapped[List["CustomRecord"]] = relationship("CustomRecord", back_populates="custom_object", cascade="all, delete-orphan")
 
     def to_dict(self) -> dict:
         return {
@@ -471,6 +474,8 @@ class CustomField(Base):
     is_active:       Mapped[bool]          = mapped_column(Boolean, default=True)
     created_at:      Mapped[datetime]      = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     
+    custom_object: Mapped["CustomObject"] = relationship("CustomObject", back_populates="fields")
+    
     __table_args__ = (
         UniqueConstraint("user_id", "object_id", "name", name="uq_user_object_fieldname"),
     )
@@ -501,6 +506,8 @@ class CustomRecord(Base):
     data:            Mapped[dict]          = mapped_column(JSON, default=dict) # The dynamic values
     created_at:      Mapped[datetime]      = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at:      Mapped[datetime]      = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    custom_object: Mapped["CustomObject"] = relationship("CustomObject", back_populates="records")
 
     def to_dict(self) -> dict:
         return {
