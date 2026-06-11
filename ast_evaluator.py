@@ -37,13 +37,21 @@ class SafeMathEvaluator(ast.NodeVisitor):
             raise ValueError("Only basic functions are allowed.")
             
         func_name = node.func.id
-        allowed_funcs = {"max": max, "min": min, "abs": abs, "sum": sum}
-        
-        if func_name not in allowed_funcs:
-            raise ValueError(f"Function '{func_name}' is not allowed.")
-            
         args = [self.visit(arg) for arg in node.args]
-        return allowed_funcs[func_name](*args)
+        
+        if func_name == "max":
+            if not args: raise ValueError("max() requires arguments")
+            return max(args)
+        elif func_name == "min":
+            if not args: raise ValueError("min() requires arguments")
+            return min(args)
+        elif func_name == "abs":
+            if len(args) != 1: raise ValueError("abs() takes exactly 1 argument")
+            return abs(args[0])
+        elif func_name == "sum":
+            return sum(args)
+        else:
+            raise ValueError(f"Function '{func_name}' is not allowed.")
 
     def visit_Constant(self, node):
         if isinstance(node.value, (int, float)):

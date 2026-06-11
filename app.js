@@ -1879,7 +1879,14 @@ if (newRecordBtn) {
 
         document.getElementById('recordEditorTitle').textContent = `New ${p3State.currentObjectName} Record`;
         
-        let formHtml = '';
+        let formHtml = `
+            <div class="input-wrapper" style="margin-bottom: 16px;">
+                <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">Record Name (Required)</label>
+                <input type="text" class="stock-input" id="recordEditorName" placeholder="e.g. My Portfolio">
+            </div>
+            <hr style="border:0; border-top:1px solid var(--border); margin-bottom:16px;">
+        `;
+        
         p3State.activeFields.forEach(cf => {
             if (cf.field_type === 'formula') return; // Formulas are computed, not inputted
             
@@ -1905,7 +1912,14 @@ if (newRecordBtn) {
 
 if (saveRecordBtn) {
     saveRecordBtn.addEventListener('click', async () => {
-        const payload = { data: {} };
+        const nameInput = document.getElementById('recordEditorName');
+        const recordName = nameInput ? nameInput.value.trim() : '';
+        if (!recordName) {
+            showToast('Record Name is required', 'error');
+            return;
+        }
+
+        const payload = { name: recordName, data: {} };
         const inputs = recordEditorForm.querySelectorAll('input[data-field]');
         
         inputs.forEach(input => {
