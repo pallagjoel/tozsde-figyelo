@@ -708,15 +708,30 @@ function initTheme() {
   const savedTheme = localStorage.getItem("app_theme") || "dark";
   document.documentElement.setAttribute("data-theme", savedTheme);
   
-  const switcher = document.getElementById("theme-switcher");
-  if (switcher) {
-    switcher.value = savedTheme;
-    switcher.addEventListener("change", (e) => {
-      const newTheme = e.target.value;
+  const cards = document.querySelectorAll('.theme-card');
+  cards.forEach(card => {
+    if (card.dataset.themeValue === savedTheme) {
+      card.style.borderColor = 'var(--accent-primary)';
+      card.style.boxShadow = 'var(--glow-primary)';
+    } else {
+      card.style.borderColor = 'var(--border)';
+      card.style.boxShadow = 'none';
+    }
+
+    card.addEventListener('click', () => {
+      const newTheme = card.dataset.themeValue;
       document.documentElement.setAttribute("data-theme", newTheme);
       localStorage.setItem("app_theme", newTheme);
+      
+      // Update visual selection
+      cards.forEach(c => {
+        c.style.borderColor = 'var(--border)';
+        c.style.boxShadow = 'none';
+      });
+      card.style.borderColor = 'var(--accent-primary)';
+      card.style.boxShadow = 'var(--glow-primary)';
     });
-  }
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
