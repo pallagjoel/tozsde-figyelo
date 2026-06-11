@@ -22,7 +22,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from models import (
-    Company, QuarterlyFinancials, DailyPrice, Valuation, MacroRate,
+    Company, QuarterlyFinancials, DailyPrice, Valuation, MacroRate, MathFormula,
     get_session, get_latest_macro, get_or_create_company,
 )
 from math_config import get_config, MathConfig, ScenarioConfig
@@ -33,6 +33,24 @@ from math_config import get_config, MathConfig, ScenarioConfig
 
 def _cfg():
     return get_config()
+
+def _get_formulas(session: Session) -> dict:
+    """Fetch all dynamic math formulas from the database."""
+    formulas = session.query(MathFormula).all()
+    return {f.key: f.formula_string for f in formulas}
+
+def _eval_formula(formula_str: str, default_val: float, variables: dict) -> float:
+    """Safely evaluate a mathematical formula string with a restricted local namespace."""
+    if not formula_str:
+        return default_val
+    try:
+        # Provide math builtins
+        variables.update({"max": max, "min": min, "abs": abs, "sum": sum})
+        result = eval(formula_str, {"__builtins__": None}, variables)
+        return float(result)
+    except Exception as e:
+        print(f"Error evaluating formula '{formula_str}': {e}")
+        return default_val
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -67,6 +85,7 @@ def compute_capm(
     market_return: Optional[float] = None,
     erp_override: Optional[float] = None,
     scenario: Optional[ScenarioConfig] = None,
+    formulas: dict = None,
 ) -> dict:
     """
     Capital Asset Pricing Model.
@@ -87,7 +106,12 @@ def compute_capm(
         sc.equity_risk_premium if sc else cfg.get("equity_risk_premium", default=0.0575)
     )
 
-    expected_return = rf + beta * erp
+    formula_str = formulas.get("capm_expected_return", "rf + beta * erp") if formulas else "rf + beta * erp"
+    expected_return = _eval_formula(formula_str, default_val=(rf + beta * erp), variables={
+        "rf": rf,
+        "beta": beta,
+        "erp": erp
+    })
 
     return {
         "capm_expected_return": round(expected_return, 6),
@@ -108,6 +132,7 @@ def compute_wacc(
     interest_expense: Optional[float] = None,
     tax_rate: Optional[float] = None,
     scenario: Optional[ScenarioConfig] = None,
+    formulas: dict = None,
 ) -> dict:
     """
     Weighted Average Cost of Capital.
@@ -132,16 +157,25 @@ def compute_wacc(
     weight_equity = market_cap / total_value if total_value > 0 else 1.0
     weight_debt   = total_debt / total_value if total_value > 0 else 0.0
 
-    # Estimate cost of debt from interest expense / total debt, or use risk-free + spread
-    if interest_expense and total_debt > 0:
-        cost_of_debt = abs(interest_expense) / total_debt
-    else:
-        cost_of_debt = cost_of_equity * 0.5  # rough approximation
+    # Estimate cost of debt using dynamic formula
+    cd_formula = formulas.get("cost_of_debt", "(abs(interest_expense) / total_debt) if total_debt > 0 else (cost_of_equity * 0.5)") if formulas else "(abs(interest_expense) / total_debt) if total_debt > 0 else (cost_of_equity * 0.5)"
+    cost_of_debt = _eval_formula(cd_formula, default_val=(cost_of_equity * 0.5), variables={
+        "interest_expense": float(interest_expense or 0.0),
+        "total_debt": total_debt,
+        "cost_of_equity": cost_of_equity
+    })
 
     # Clamp cost_of_debt to reasonable range
     cost_of_debt = max(0.01, min(cost_of_debt, 0.20))
 
-    wacc = weight_equity * cost_of_equity + weight_debt * cost_of_debt * (1 - tax)
+    wacc_formula = formulas.get("wacc", "weight_equity * cost_of_equity + weight_debt * cost_of_debt * (1 - tax_rate)") if formulas else "weight_equity * cost_of_equity + weight_debt * cost_of_debt * (1 - tax_rate)"
+    wacc = _eval_formula(wacc_formula, default_val=(weight_equity * cost_of_equity + weight_debt * cost_of_debt * (1 - tax)), variables={
+        "weight_equity": weight_equity,
+        "cost_of_equity": cost_of_equity,
+        "weight_debt": weight_debt,
+        "cost_of_debt": cost_of_debt,
+        "tax_rate": tax
+    })
     wacc += wacc_adj  # Apply scenario adjustment
 
     # Clamp WACC to config-driven range
@@ -169,6 +203,7 @@ def compute_dcf(
     terminal_growth: Optional[float] = None,
     sector: Optional[str] = None,
     scenario: Optional[ScenarioConfig] = None,
+    formulas: dict = None,
 ) -> dict:
     """
     Discounted Cash Flow — 2-stage model.
@@ -260,7 +295,12 @@ def compute_dcf(
     if wacc <= tg:
         tg = wacc * 0.5  # Safety: terminal growth can't exceed WACC
 
-    tv = (last_fcf * (1 + tg)) / (wacc - tg)
+    tv_formula = formulas.get("terminal_value", "(last_fcf * (1 + tg)) / (wacc - tg)") if formulas else "(last_fcf * (1 + tg)) / (wacc - tg)"
+    tv = _eval_formula(tv_formula, default_val=((last_fcf * (1 + tg)) / (wacc - tg)), variables={
+        "last_fcf": last_fcf,
+        "tg": tg,
+        "wacc": wacc
+    })
     pv_tv = tv / (1 + wacc) ** proj_years
 
     # ── Enterprise Value → Equity Value → Per-Share Value ──
@@ -300,6 +340,7 @@ def compute_altman_z(
     total_assets: float,
     sector: Optional[str] = None,
     scenario: Optional[ScenarioConfig] = None,
+    formulas: dict = None,
 ) -> dict:
     """
     Altman Z-Score with configurable coefficients.
@@ -331,7 +372,17 @@ def compute_altman_z(
     x4 = safe_div(market_cap, total_liabilities)
     x5 = safe_div(revenue, ta)
 
-    z = c1 * x1 + c2 * x2 + c3 * x3 + c4 * x4 + c5 * x5
+    z_formula = formulas.get("altman_z", "c1 * (working_capital / total_assets) + c2 * (retained_earnings / total_assets) + c3 * (ebit / total_assets) + c4 * (market_cap / total_liabilities) + c5 * (revenue / total_assets)") if formulas else "c1 * (working_capital / total_assets) + c2 * (retained_earnings / total_assets) + c3 * (ebit / total_assets) + c4 * (market_cap / total_liabilities) + c5 * (revenue / total_assets)"
+    z = _eval_formula(z_formula, default_val=(c1*x1 + c2*x2 + c3*x3 + c4*x4 + c5*x5), variables={
+        "c1": c1, "c2": c2, "c3": c3, "c4": c4, "c5": c5,
+        "working_capital": working_capital,
+        "retained_earnings": retained_earnings,
+        "ebit": ebit,
+        "market_cap": market_cap,
+        "total_liabilities": total_liabilities,
+        "revenue": revenue,
+        "total_assets": total_assets
+    })
 
     if z > z_safe:
         zone = "SAFE"
@@ -471,6 +522,9 @@ def run_valuation_for_company(
     # Resolve scenario config
     sc = cfg.scenario(scenario_name or "base", sector=sector) if scenario_name else None
 
+    # Fetch dynamic formulas
+    formulas = _get_formulas(session)
+
     # ── Step 1: Macro Rates ──
     macro = get_latest_macro(session)
     if macro and macro.risk_free_rate is not None:
@@ -511,7 +565,7 @@ def run_valuation_for_company(
 
     # ── Step 4a: CAPM (config/scenario driven) ──
     beta = safe_float(company.beta, 1.0)
-    capm = compute_capm(beta, risk_free_rate=rf, market_return=rm, scenario=sc)
+    capm = compute_capm(beta, risk_free_rate=rf, market_return=rm, scenario=sc, formulas=formulas)
 
     # ── Step 4b: WACC (config/scenario driven) ──
     market_cap = safe_float(company.market_cap, 0.0)
@@ -527,6 +581,7 @@ def run_valuation_for_company(
         cost_of_equity=capm["capm_expected_return"],
         interest_expense=interest_exp,
         scenario=sc,
+        formulas=formulas,
     )
 
     # ── Step 4c: DCF (config/scenario/sector driven) ──
@@ -542,6 +597,7 @@ def run_valuation_for_company(
         terminal_growth=max(inflation, tg_default),
         sector=sector,
         scenario=sc,
+        formulas=formulas,
     )
 
     dcf_error = dcf_result.get("error")
@@ -562,6 +618,7 @@ def run_valuation_for_company(
         total_assets=safe_float(latest_q.total_assets, 1.0),
         sector=sector,
         scenario=sc,
+        formulas=formulas,
     )
 
     # ── Step 4e: Margin of Safety ──

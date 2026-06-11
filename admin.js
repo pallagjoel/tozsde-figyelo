@@ -45,6 +45,8 @@ document.addEventListener("DOMContentLoaded", () => {
   loadObjects();
   setupEventListeners();
   loadFieldCatalog();
+  loadProviders();
+  loadFormulas();
 });
 
 function initNavigation() {
@@ -678,7 +680,96 @@ window.onload = function() {
       document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
       document.getElementById('page-datasources').classList.add('active');
       
+      
       loadProviders();
     });
   }
+  
+  // Navigation handling for Formulas tab
+  const navFormulas = document.getElementById('nav-formulas');
+  if (navFormulas) {
+    navFormulas.addEventListener('click', () => {
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      navFormulas.classList.add('active');
+      
+      document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
+      document.getElementById('page-formulas').classList.add('active');
+      
+      loadFormulas();
+    });
+  }
 };
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MATH FORMULAS
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function loadFormulas() {
+  try {
+    const res = await adminApi("/api/admin/formulas");
+    if (!res.ok) throw new Error("Failed to load formulas");
+    const formulas = await res.json();
+    renderFormulas(formulas);
+  } catch (err) {
+    console.error(err);
+    document.getElementById("formulas-container").innerHTML = `<div class="text-center text-danger">Error loading formulas</div>`;
+  }
+}
+
+function renderFormulas(formulas) {
+  const container = document.getElementById("formulas-container");
+  if (!formulas || formulas.length === 0) {
+    container.innerHTML = `<div class="text-center">No formulas found.</div>`;
+    return;
+  }
+  
+  let html = "";
+  formulas.forEach(f => {
+    html += `
+      <div class="card object-card" style="margin-bottom: 1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h4 style="margin:0; color:var(--primary);">${escapeHtml(f.name)}</h4>
+            <div style="font-size:0.85rem; color:var(--text-muted); margin-top:0.25rem;">${escapeHtml(f.description)}</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="saveFormula('${escapeHtml(f.key)}')">
+            <span class="material-symbols-outlined" style="font-size:1.1rem;">save</span> Save
+          </button>
+        </div>
+        
+        <div style="margin-top: 1rem;">
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">Available Variables:</label>
+          <div style="margin-bottom: 0.5rem;">
+            ${f.available_variables.map(v => `<span class="chip" style="background: rgba(33,150,243,0.1); color: var(--primary); font-family: monospace; font-size: 0.75rem;">${escapeHtml(v)}</span>`).join("")}
+          </div>
+          <textarea id="formula-input-${escapeHtml(f.key)}" class="input-field" style="font-family: monospace; font-size: 1rem; width: 100%; min-height: 80px;" rows="3">${escapeHtml(f.formula_string)}</textarea>
+        </div>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+async function saveFormula(key) {
+  const input = document.getElementById(`formula-input-${key}`);
+  const formula_string = input.value;
+  
+  try {
+    const res = await adminApi(`/api/admin/formulas/${key}`, {
+      method: "POST",
+      body: JSON.stringify({ formula_string })
+    });
+    
+    if (!res.ok) {
+      const errData = await res.json();
+      showToast(errData.detail || "Error saving formula", "danger");
+      return;
+    }
+    
+    showToast("Formula saved successfully!", "success");
+    loadFormulas();
+  } catch (err) {
+    console.error(err);
+    showToast("Network error saving formula", "danger");
+  }
+}

@@ -26,6 +26,7 @@ import os
 import math
 import re
 import threading
+import ast
 
 import database as db
 import data_factory as yfc
@@ -33,7 +34,7 @@ import data_factory as yfc
 # Quant engine imports
 from models import (
     init_quant_db, get_session, Company, QuarterlyFinancials,
-    DailyPrice, Valuation, MacroRate, CustomField,
+    DailyPrice, Valuation, MacroRate, DataProvider, MathFormula,
     get_or_create_company, get_latest_macro, get_latest_valuation,
 )
 from valuation_engine import run_all_valuations, run_valuation_for_company, run_scenario_sweep
@@ -72,15 +73,15 @@ app.include_router(auth_router)
 
 @app.get("/", include_in_schema=False)
 def serve_frontend_root():
-    return FileResponse(os.path.join(BASE_DIR, "index.html"))
+    return FileResponse(os.path.join(BASE_DIR, "index.html"), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 @app.get("/index.html", include_in_schema=False)
 def serve_frontend_index():
-    return FileResponse(os.path.join(BASE_DIR, "index.html"))
+    return FileResponse(os.path.join(BASE_DIR, "index.html"), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 @app.get("/admin.html", include_in_schema=False)
 def serve_admin():
-    return FileResponse(os.path.join(BASE_DIR, "admin.html"))
+    return FileResponse(os.path.join(BASE_DIR, "admin.html"), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 
 # ── Request / Response Models ─────────────────────────────────────────────────
@@ -1645,6 +1646,57 @@ def activate_provider(provider_id: int, current_user: User = Depends(get_current
         provider.is_active = True
         session.commit()
         return {"success": True, "active_provider": provider.name}
+
+class FormulaUpdateModel(BaseModel):
+    formula_string: str
+
+def validate_formula_ast(formula_str: str, available_vars: list[str]) -> tuple[bool, str]:
+    """
+    Validates a formula string using AST to prevent execution of malicious code or typos.
+    Only allows basic math operators, specific functions, and predefined variables.
+    """
+    try:
+        tree = ast.parse(formula_str, mode='eval')
+    except SyntaxError as e:
+        return False, f"Syntax Error: {e}"
+    
+    allowed_funcs = {"max", "min", "abs", "sum"}
+    
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name):
+            # If the Name is a function call, we check it separately
+            if node.id not in available_vars and node.id not in allowed_funcs:
+                return False, f"Unknown or disallowed variable used: '{node.id}'"
+        elif isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name):
+                if node.func.id not in allowed_funcs:
+                    return False, f"Function call not allowed: '{node.func.id}'"
+    return True, "Valid"
+
+@app.get("/api/admin/formulas", summary="List all math formulas")
+def api_get_formulas(current_user: User = Depends(get_current_user)):
+    with get_session() as session:
+        formulas = session.query(MathFormula).all()
+        return [f.to_dict() for f in formulas]
+
+@app.post("/api/admin/formulas/{key}", summary="Update a math formula")
+def api_update_formula(key: str, data: FormulaUpdateModel, current_user: User = Depends(get_current_user)):
+    with get_session() as session:
+        formula = session.query(MathFormula).filter_by(key=key).first()
+        if not formula:
+            raise HTTPException(status_code=404, detail="Formula not found")
+            
+        available = formula.available_variables.split(",") if formula.available_variables else []
+        
+        # Validate the new formula
+        is_valid, error_msg = validate_formula_ast(data.formula_string, available)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=error_msg)
+            
+        formula.formula_string = data.formula_string
+        session.commit()
+        
+        return {"success": True, "message": "Formula updated successfully", "formula": formula.to_dict()}
 
 if __name__ == "__main__":
     import uvicorn

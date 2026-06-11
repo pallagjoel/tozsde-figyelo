@@ -510,6 +510,38 @@ class CustomRecord(Base):
         }
 
 # ══════════════════════════════════════════════════════════════════════════════
+# MATH FORMULAS (Dynamic Equation Engine)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class MathFormula(Base):
+    """
+    Stores mathematical equations used by the Valuation Engine.
+    Users can override formulas from the UI.
+    """
+    __tablename__ = "math_formulas"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    key: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str] = mapped_column(Text)
+    formula_string: Mapped[str] = mapped_column(Text, nullable=False)
+    available_variables: Mapped[str] = mapped_column(String(500), nullable=False)  # Comma-separated list of allowed variables
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "key": self.key,
+            "name": self.name,
+            "description": self.description,
+            "formula_string": self.formula_string,
+            "available_variables": self.available_variables.split(",") if self.available_variables else [],
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+# ══════════════════════════════════════════════════════════════════════════════
 # DATABASE INITIALIZATION
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -533,6 +565,51 @@ def init_quant_db():
             if not session.query(DataProvider).filter_by(name=d["name"]).first():
                 provider = DataProvider(**d)
                 session.add(provider)
+                
+        # Seed default Math Formulas
+        default_formulas = [
+            {
+                "key": "capm_expected_return",
+                "name": "CAPM Expected Return",
+                "description": "Calculates the required rate of return for an asset.",
+                "formula_string": "rf + beta * erp",
+                "available_variables": "rf,beta,erp"
+            },
+            {
+                "key": "cost_of_debt",
+                "name": "Cost of Debt",
+                "description": "Estimates the cost of debt. Falls back to 50% of cost of equity if no debt.",
+                "formula_string": "(abs(interest_expense) / total_debt) if total_debt > 0 else (cost_of_equity * 0.5)",
+                "available_variables": "interest_expense,total_debt,cost_of_equity"
+            },
+            {
+                "key": "wacc",
+                "name": "Weighted Average Cost of Capital (WACC)",
+                "description": "Blended cost of capital taking into account equity, debt, and corporate taxes.",
+                "formula_string": "weight_equity * cost_of_equity + weight_debt * cost_of_debt * (1 - tax_rate)",
+                "available_variables": "weight_equity,cost_of_equity,weight_debt,cost_of_debt,tax_rate"
+            },
+            {
+                "key": "terminal_value",
+                "name": "DCF Terminal Value",
+                "description": "Gordon Growth Model to estimate value beyond the projection period.",
+                "formula_string": "(last_fcf * (1 + tg)) / (wacc - tg)",
+                "available_variables": "last_fcf,tg,wacc"
+            },
+            {
+                "key": "altman_z",
+                "name": "Altman Z-Score",
+                "description": "Predicts bankruptcy risk based on 5 financial ratios.",
+                "formula_string": "c1 * (working_capital / total_assets) + c2 * (retained_earnings / total_assets) + c3 * (ebit / total_assets) + c4 * (market_cap / total_liabilities) + c5 * (revenue / total_assets)",
+                "available_variables": "c1,c2,c3,c4,c5,working_capital,retained_earnings,ebit,market_cap,total_liabilities,revenue,total_assets"
+            }
+        ]
+        
+        for f in default_formulas:
+            if not session.query(MathFormula).filter_by(key=f["key"]).first():
+                formula = MathFormula(**f)
+                session.add(formula)
+                
         session.commit()
     except Exception as e:
         session.rollback()

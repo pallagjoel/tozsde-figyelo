@@ -38,7 +38,10 @@
       <i class="fas fa-file-import"></i> Data Import Wizard
     </a>
     <a class="nav-item" data-page="datasources" id="nav-datasources">
-      <i class="fas fa-database"></i> Data Sources
+      <span class="material-symbols-outlined">api</span> Data Sources
+    </a>
+    <a class="nav-item" data-page="formulas" id="nav-formulas">
+      <span class="material-symbols-outlined">functions</span> Math Equations
     </a>
   </nav>
 
@@ -181,6 +184,24 @@
         <div style="padding:16px; border-bottom:1px solid var(--glass-border); font-weight:600;">Available Providers</div>
         <div id="providersList" style="padding: 16px;">
           <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- MATH EQUATIONS SECTION -->
+    <section id="page-formulas" class="page-section" style="display: none;">
+      <div class="page-header">
+        <h2>Quantitative Math Equations</h2>
+        <p style="color:var(--text-muted); font-size:0.9rem;">
+          View and edit the mathematical formulas used by the Valuation Engine. Use correct variable names.
+        </p>
+      </div>
+
+      <div class="formulas-container" id="formulas-container">
+        <!-- JS will populate formula cards here -->
+        <div class="text-center" style="padding: 3rem;">
+          <span class="material-symbols-outlined rotating" style="font-size: 2rem; color: var(--primary);">sync</span>
+          <p>Loading math equations...</p>
         </div>
       </div>
     </section>
