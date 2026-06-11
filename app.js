@@ -2192,3 +2192,20 @@ function initTheme() {
   const savedTheme = localStorage.getItem("app_theme") || "dark";
   document.body.setAttribute("data-theme", savedTheme);
 }
+
+// ── Helpers ──
+window.escapeHtml = function(str) {
+  if (!str) return "";
+  return String(str).replace(/[&<>"'`=\/]/g, function (s) {
+    return ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+      "/": "&#x2F;",
+      "`": "&#x60;",
+      "=": "&#x3D;"
+    })[s];
+  });
+};
