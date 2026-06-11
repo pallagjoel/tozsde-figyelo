@@ -112,8 +112,8 @@ body::before {
   transition: opacity var(--t-smooth);
 }
 
-[data-theme="light"] body::before,
-[data-theme="grey"] body::before {
+body[data-theme="light"]::before,
+body[data-theme="grey"]::before {
   opacity: 0;
 }
 
