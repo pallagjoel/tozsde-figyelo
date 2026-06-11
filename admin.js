@@ -706,7 +706,7 @@ window.onload = function() {
 // ══════════════════════════════════════════════════════════════════════════════
 function initTheme() {
   const savedTheme = localStorage.getItem("app_theme") || "dark";
-  document.documentElement.setAttribute("data-theme", savedTheme);
+  document.body.setAttribute("data-theme", savedTheme);
   
   const cards = document.querySelectorAll('.theme-card');
   cards.forEach(card => {
@@ -720,7 +720,7 @@ function initTheme() {
 
     card.addEventListener('click', () => {
       const newTheme = card.dataset.themeValue;
-      document.documentElement.setAttribute("data-theme", newTheme);
+      document.body.setAttribute("data-theme", newTheme);
       localStorage.setItem("app_theme", newTheme);
       
       // Update visual selection

@@ -2044,5 +2044,5 @@ logoutBtn?.addEventListener('click', () => {
 // ══════════════════════════════════════════════════════════════════════════════
 function initTheme() {
   const savedTheme = localStorage.getItem("app_theme") || "dark";
-  document.documentElement.setAttribute("data-theme", savedTheme);
+  document.body.setAttribute("data-theme", savedTheme);
 }

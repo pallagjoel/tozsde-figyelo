@@ -51,7 +51,7 @@
 }
 
 /* ── Light Theme ── */
-:root[data-theme="light"] {
+body[data-theme="light"] {
   --bg-base:        hsl(220, 15%, 98%);
   --bg-surface:     hsl(0, 0%, 100%);
   --bg-elevated:    hsl(220, 20%, 96%);
@@ -68,7 +68,7 @@
 }
 
 /* ── Grey (Professional) Theme ── */
-:root[data-theme="grey"] {
+body[data-theme="grey"] {
   --bg-base:        hsl(210, 10%, 18%);
   --bg-surface:     hsl(210, 12%, 22%);
   --bg-elevated:    hsl(210, 12%, 25%);
