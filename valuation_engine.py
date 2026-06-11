@@ -40,13 +40,12 @@ def _get_formulas(session: Session) -> dict:
     return {f.key: f.formula_string for f in formulas}
 
 def _eval_formula(formula_str: str, default_val: float, variables: dict) -> float:
-    """Safely evaluate a mathematical formula string with a restricted local namespace."""
+    """Safely evaluate a mathematical formula string using AST parsing."""
     if not formula_str:
         return default_val
     try:
-        # Provide math builtins
-        variables.update({"max": max, "min": min, "abs": abs, "sum": sum})
-        result = eval(formula_str, {"__builtins__": None}, variables)
+        from ast_evaluator import safe_eval
+        result = safe_eval(formula_str, variables)
         return float(result)
     except Exception as e:
         print(f"Error evaluating formula '{formula_str}': {e}")

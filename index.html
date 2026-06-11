@@ -554,6 +554,9 @@
       <button class="btn btn-secondary" id="manageColumnsBtn" title="Manage Columns">
         <i class="fas fa-cog"></i>
       </button>
+      <button class="btn btn-primary" id="newRecordBtn" style="display:none;">
+        <i class="fas fa-plus"></i> New Record
+      </button>
     </div>
   </div>
 
@@ -700,6 +703,25 @@
     <div class="modal-body" style="max-height:600px; overflow-y:auto;">
       <div id="rdFieldsGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:16px;">
         <!-- Dynamically populated -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Record Editor Modal (Create/Edit) ── -->
+<div class="modal-overlay" id="recordEditorModal" style="display:none;">
+  <div class="modal" style="max-width:600px; width:90%;">
+    <div class="modal-header">
+      <div class="modal-title" id="recordEditorTitle">New Record</div>
+      <button class="modal-close" id="closeRecordEditorBtn"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div id="recordEditorForm" style="display:flex; flex-direction:column; gap:16px;">
+        <!-- Dynamically populated form fields -->
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:24px; padding-top:16px; border-top:1px solid var(--border);">
+        <button class="btn btn-secondary" id="cancelRecordEditorBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveRecordBtn"><i class="fas fa-save"></i> Save</button>
       </div>
     </div>
   </div>

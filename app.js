@@ -1657,6 +1657,12 @@ async function loadRecordsPage() {
     p3State.recordsTotal = data.total;
     p3State.currentRecords = data.records;
     
+    // Toggle New Record button visibility
+    const newRecordBtn = document.getElementById('newRecordBtn');
+    if (newRecordBtn) {
+        newRecordBtn.style.display = p3State.currentObjectId !== -1 ? 'block' : 'none';
+    }
+    
     // Apply column filters from localStorage
     const savedColsStr = localStorage.getItem(`list_view_cols_${p3State.currentObjectId}`);
     let displayFields = p3State.activeFields;
@@ -1849,6 +1855,91 @@ window.openRecordModal = function(index) {
   document.getElementById('rdFieldsGrid').innerHTML = html;
   recordDetailModal.style.display = 'flex';
 };
+
+// ── Custom Record Editor Logic ──
+const newRecordBtn = document.getElementById('newRecordBtn');
+const recordEditorModal = document.getElementById('recordEditorModal');
+const closeRecordEditorBtn = document.getElementById('closeRecordEditorBtn');
+const cancelRecordEditorBtn = document.getElementById('cancelRecordEditorBtn');
+const saveRecordBtn = document.getElementById('saveRecordBtn');
+const recordEditorForm = document.getElementById('recordEditorForm');
+
+function closeRecordEditor() {
+    recordEditorModal.style.display = 'none';
+    recordEditorForm.innerHTML = '';
+}
+
+[closeRecordEditorBtn, cancelRecordEditorBtn].forEach(btn => {
+    if (btn) btn.addEventListener('click', closeRecordEditor);
+});
+
+if (newRecordBtn) {
+    newRecordBtn.addEventListener('click', () => {
+        if (p3State.currentObjectId === -1) return; // Cannot create base stocks here
+
+        document.getElementById('recordEditorTitle').textContent = `New ${p3State.currentObjectName} Record`;
+        
+        let formHtml = '';
+        p3State.activeFields.forEach(cf => {
+            if (cf.field_type === 'formula') return; // Formulas are computed, not inputted
+            
+            let inputType = 'text';
+            let stepAttr = '';
+            if (cf.field_type === 'number' || cf.field_type === 'currency' || cf.field_type === 'percent') {
+                inputType = 'number';
+                stepAttr = 'step="any"';
+            }
+            
+            formHtml += `
+                <div class="input-wrapper" style="margin-bottom: 8px;">
+                    <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">${cf.label || cf.name}</label>
+                    <input type="${inputType}" ${stepAttr} class="stock-input" data-field="${cf.name}" placeholder="Enter ${cf.label || cf.name}">
+                </div>
+            `;
+        });
+        
+        recordEditorForm.innerHTML = formHtml;
+        recordEditorModal.style.display = 'flex';
+    });
+}
+
+if (saveRecordBtn) {
+    saveRecordBtn.addEventListener('click', async () => {
+        const payload = { data: {} };
+        const inputs = recordEditorForm.querySelectorAll('input[data-field]');
+        
+        inputs.forEach(input => {
+            const fieldName = input.getAttribute('data-field');
+            let val = input.value;
+            if (input.type === 'number') {
+                val = val ? parseFloat(val) : null;
+            }
+            payload.data[fieldName] = val;
+        });
+
+        try {
+            saveRecordBtn.disabled = true;
+            saveRecordBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            
+            const res = await authFetch(`${API_BASE}/api/objects/${p3State.currentObjectName}/records`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            if (!res.ok) throw new Error('Failed to create record');
+            
+            showToast('Record created successfully!', 'success');
+            closeRecordEditor();
+            loadRecordsPage(); // Reload the table
+        } catch (err) {
+            showToast(err.message, 'error');
+        } finally {
+            saveRecordBtn.disabled = false;
+            saveRecordBtn.innerHTML = '<i class="fas fa-save"></i> Save';
+        }
+    });
+}
 
 
 

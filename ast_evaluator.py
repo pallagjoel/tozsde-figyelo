@@ -32,6 +32,19 @@ class SafeMathEvaluator(ast.NodeVisitor):
             return self.variables[node.id]
         raise NameError(f"Variable '{node.id}' not defined in sandbox.")
 
+    def visit_Call(self, node):
+        if not isinstance(node.func, ast.Name):
+            raise ValueError("Only basic functions are allowed.")
+            
+        func_name = node.func.id
+        allowed_funcs = {"max": max, "min": min, "abs": abs, "sum": sum}
+        
+        if func_name not in allowed_funcs:
+            raise ValueError(f"Function '{func_name}' is not allowed.")
+            
+        args = [self.visit(arg) for arg in node.args]
+        return allowed_funcs[func_name](*args)
+
     def visit_Constant(self, node):
         if isinstance(node.value, (int, float)):
             return float(node.value)
