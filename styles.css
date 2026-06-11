@@ -50,6 +50,74 @@
   --t-spring: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* ── Light Theme ── */
+[data-theme="light"] {
+  --bg-base:        hsl(220, 15%, 98%);
+  --bg-surface:     hsl(0, 0%, 100%);
+  --bg-elevated:    hsl(220, 20%, 96%);
+  --bg-card:        hsl(0, 0%, 100%);
+
+  --text-primary:   hsl(220, 30%, 15%);
+  --text-secondary: hsl(220, 15%, 40%);
+  --text-muted:     hsl(220, 10%, 55%);
+
+  --border:         hsl(220, 15%, 85%);
+  
+  --glass-bg:       rgba(255, 255, 255, 0.85);
+  --glass-border:   rgba(0, 0, 0, 0.08);
+}
+
+/* ── Grey (Professional) Theme ── */
+[data-theme="grey"] {
+  --bg-base:        hsl(210, 10%, 18%);
+  --bg-surface:     hsl(210, 12%, 22%);
+  --bg-elevated:    hsl(210, 12%, 25%);
+  --bg-card:        hsl(210, 12%, 28%);
+
+  --text-primary:   hsl(210, 20%, 95%);
+  --text-secondary: hsl(210, 15%, 80%);
+  --text-muted:     hsl(210, 10%, 65%);
+
+  --border:         hsl(210, 15%, 35%);
+
+  --glass-bg:       rgba(45, 50, 56, 0.85);
+  --glass-border:   rgba(255, 255, 255, 0.1);
+}
+
+/* ── Light Theme ── */
+[data-theme="light"] {
+  --bg-base:        hsl(220, 15%, 98%);
+  --bg-surface:     hsl(0, 0%, 100%);
+  --bg-elevated:    hsl(220, 20%, 96%);
+  --bg-card:        hsl(0, 0%, 100%);
+
+  --text-primary:   hsl(220, 30%, 15%);
+  --text-secondary: hsl(220, 15%, 40%);
+  --text-muted:     hsl(220, 10%, 55%);
+
+  --border:         hsl(220, 15%, 85%);
+  
+  --glass-bg:       rgba(255, 255, 255, 0.85);
+  --glass-border:   rgba(0, 0, 0, 0.08);
+}
+
+/* ── Grey (Professional) Theme ── */
+[data-theme="grey"] {
+  --bg-base:        hsl(210, 10%, 18%);
+  --bg-surface:     hsl(210, 12%, 22%);
+  --bg-elevated:    hsl(210, 12%, 25%);
+  --bg-card:        hsl(210, 12%, 28%);
+
+  --text-primary:   hsl(210, 20%, 95%);
+  --text-secondary: hsl(210, 15%, 80%);
+  --text-muted:     hsl(210, 10%, 65%);
+
+  --border:         hsl(210, 15%, 35%);
+
+  --glass-bg:       rgba(45, 50, 56, 0.85);
+  --glass-border:   rgba(255, 255, 255, 0.1);
+}
+
 /* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1657,4 +1725,27 @@ body::before {
   .info-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── Form Controls (Inputs, Textareas) ── */
+.form-control {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 1rem;
+  transition: var(--t-fast);
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(138, 43, 226, 0.15); /* Soft primary glow */
+}
+
+.form-control::placeholder {
+  color: var(--text-muted);
 }

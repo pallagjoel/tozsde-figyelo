@@ -1987,6 +1987,8 @@ document.getElementById('mfaSetupDoneBtn')?.addEventListener('click', () => {
 
 // Check auth on load
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+  setupEventListeners();
   const token = localStorage.getItem('quant_auth_token');
   if (!token) {
     authOverlay.style.display = 'flex';
@@ -2037,3 +2039,20 @@ logoutBtn?.addEventListener('click', () => {
   location.reload();
 });
 
+// ══════════════════════════════════════════════════════════════════════════════
+// THEME HANDLING
+// ══════════════════════════════════════════════════════════════════════════════
+function initTheme() {
+  const savedTheme = localStorage.getItem("app_theme") || "dark";
+  document.documentElement.setAttribute("data-theme", savedTheme);
+  
+  const switcher = document.getElementById("theme-switcher");
+  if (switcher) {
+    switcher.value = savedTheme;
+    switcher.addEventListener("change", (e) => {
+      const newTheme = e.target.value;
+      document.documentElement.setAttribute("data-theme", newTheme);
+      localStorage.setItem("app_theme", newTheme);
+    });
+  }
+}

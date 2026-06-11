@@ -41,6 +41,7 @@ let importInterval = null;
 let globalCatalog = null;
 
 document.addEventListener("DOMContentLoaded", () => {
+  initTheme();
   initNavigation();
   loadObjects();
   setupEventListeners();
@@ -699,6 +700,28 @@ window.onload = function() {
     });
   }
 };
+
+// ══════════════════════════════════════════════════════════════════════════════
+// THEME HANDLING
+// ══════════════════════════════════════════════════════════════════════════════
+function initTheme() {
+  const savedTheme = localStorage.getItem("app_theme") || "dark";
+  document.documentElement.setAttribute("data-theme", savedTheme);
+  
+  const switcher = document.getElementById("theme-switcher");
+  if (switcher) {
+    switcher.value = savedTheme;
+    switcher.addEventListener("change", (e) => {
+      const newTheme = e.target.value;
+      document.documentElement.setAttribute("data-theme", newTheme);
+      localStorage.setItem("app_theme", newTheme);
+    });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MATH FORMULAS
