@@ -1318,7 +1318,13 @@ def create_custom_object(req: CustomObjectCreate, current_user: User = Depends(g
         if existing:
             raise HTTPException(400, f"Object '{req.name}' already exists.")
         
-        obj = CustomObject(name=req.name, label=req.label, plural_label=req.plural_label, description=req.description)
+        obj = CustomObject(
+            user_id=current_user.id,
+            name=req.name, 
+            label=req.label, 
+            plural_label=req.plural_label, 
+            description=req.description
+        )
         session.add(obj)
         session.commit()
         return {"success": True, "object": obj.to_dict()}
@@ -1416,6 +1422,7 @@ def create_custom_field(req: CustomFieldCreate, current_user: User = Depends(get
                 raise HTTPException(400, f"Invalid formula syntax: {e}")
 
         field = CustomField(
+            user_id=current_user.id,
             object_id=obj_id,
             name=req.name, label=req.label, field_type=req.field_type,
             formula=req.formula, lookup_object=req.lookup_object,
@@ -1499,7 +1506,12 @@ def create_custom_record(object_name: str, req: CustomRecordCreate, current_user
         if not obj:
             raise HTTPException(404, "Object not found")
             
-        record = CustomRecord(object_id=obj.id, name=req.name, data=req.data)
+        record = CustomRecord(
+            user_id=current_user.id,
+            object_id=obj.id, 
+            name=req.name, 
+            data=req.data
+        )
         session.add(record)
         session.commit()
         return {"success": True, "record": record.to_dict()}
